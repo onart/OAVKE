@@ -25,7 +25,12 @@ namespace onart {
 		static void mainLoop();
 		// 종료 전 할당한 모든 자원을 해제합니다.
 		static void finalize();
-
+		// vulkan 인스턴스를 생성합니다.
+		static bool createInstance();
+		// vulkan 인스턴스를 해제합니다.
+		static void destroyInstance();
+	private:	// 멤버
+		static VkInstance instance;
 	};
 }
 
