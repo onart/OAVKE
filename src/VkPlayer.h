@@ -31,6 +31,10 @@ namespace onart {
 		static void destroyInstance();
 	private:	// ¸â¹ö
 		static VkInstance instance;
+	private:	// »ó¼ö
+		constexpr static bool USE_VALIDATION_LAYER = true;
+		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
+		constexpr static const int VALIDATION_LAYER_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(const char*);
 	};
 }
 

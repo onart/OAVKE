@@ -54,6 +54,12 @@ namespace onart {
 		VkInstanceCreateInfo info{};	// 일단 모두 0으로 초기화함
 		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 고정값
 		info.pApplicationInfo = &ainfo;
+
+		if constexpr (USE_VALIDATION_LAYER) {
+			info.enabledLayerCount = VALIDATION_LAYER_COUNT;
+			info.ppEnabledLayerNames = VALIDATION_LAYERS;
+		}
+
 		if (vkCreateInstance(&info, nullptr, &instance) == VK_SUCCESS) return true;
 		fprintf(stderr, "Failed to create Vulkan instance\n");
 		return false;
