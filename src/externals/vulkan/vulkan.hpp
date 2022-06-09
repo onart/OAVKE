@@ -38,7 +38,7 @@
 #include <system_error>
 #include <tuple>
 #include <type_traits>
-#include <vulkan/vulkan.h>
+#include "vulkan.h"
 #if 17 <= VULKAN_HPP_CPP_VERSION
 #  include <string_view>
 #endif
@@ -6063,7 +6063,7 @@ namespace VULKAN_HPP_NAMESPACE
 
 }  // namespace VULKAN_HPP_NAMESPACE
 
-#include <vulkan/vulkan_enums.hpp>
+#include "vulkan_enums.hpp"
 
 #ifndef VULKAN_HPP_NO_EXCEPTIONS
 namespace std
@@ -6766,9 +6766,9 @@ namespace VULKAN_HPP_NAMESPACE
 }  // namespace VULKAN_HPP_NAMESPACE
 
 // clang-format off
-#include <vulkan/vulkan_handles.hpp>
-#include <vulkan/vulkan_structs.hpp>
-#include <vulkan/vulkan_funcs.hpp>
+#include "vulkan_handles.hpp"
+#include "vulkan_structs.hpp"
+#include "vulkan_funcs.hpp"
 // clang-format on
 
 namespace VULKAN_HPP_NAMESPACE
