@@ -17,6 +17,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 namespace onart {
 
 	VkInstance VkPlayer::instance = nullptr;
+	VkPlayer::PhysicalDevice VkPlayer::physicalDevice{};
 
 	void VkPlayer::start() {
 		if (init()) {
@@ -30,7 +31,9 @@ namespace onart {
 	}
 
 	bool VkPlayer::init() {
-		return createInstance();
+		return 
+			createInstance()
+			&& findPhysicalDevice();
 	}
 
 	void VkPlayer::mainLoop() {
@@ -67,5 +70,42 @@ namespace onart {
 
 	void VkPlayer::destroyInstance() {		
 		vkDestroyInstance(instance, nullptr);
+	}
+
+	bool VkPlayer::findPhysicalDevice() {
+		uint32_t count;
+		vkEnumeratePhysicalDevices(instance, &count, nullptr);
+		std::vector<VkPhysicalDevice> cards(count);
+		vkEnumeratePhysicalDevices(instance, &count, cards.data());
+		VkPhysicalDeviceProperties properties;
+		VkPhysicalDeviceFeatures features;
+		for (uint32_t i = 0; i < count; i++) {
+			vkGetPhysicalDeviceProperties(cards[i], &properties);
+			vkGetPhysicalDeviceFeatures(cards[i], &features);
+			PhysicalDevice pd = setQueueFamily(cards[i]);
+			if (pd.card) { 
+				physicalDevice = pd;
+				return true;
+			}
+		}
+		fprintf(stderr, "Couldn't find adequate graphics device\n");
+		return false;
+	}
+
+	
+	VkPlayer::PhysicalDevice VkPlayer::setQueueFamily(VkPhysicalDevice card) {
+		PhysicalDevice ret{};
+		uint32_t qfcount;
+		vkGetPhysicalDeviceQueueFamilyProperties(card, &qfcount, nullptr);
+		std::vector<VkQueueFamilyProperties> qfs(qfcount);
+		vkGetPhysicalDeviceQueueFamilyProperties(card, &qfcount, qfs.data());
+		for (uint32_t i = 0; i < qfcount; i++) {
+			if (qfs[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT)) { return { card,i,i }; }
+			if (!ret.graphicsFamily.has_value() && (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) { ret.graphicsFamily = i; }
+			if (!ret.transferFamily.has_value() && (qfs[i].queueFlags & VK_QUEUE_TRANSFER_BIT)) { ret.transferFamily = i; }
+		}
+		if (!ret.graphicsFamily.has_value() && !ret.transferFamily.has_value()) { return {}; }
+		ret.card = card;
+		return ret;
 	}
 }
