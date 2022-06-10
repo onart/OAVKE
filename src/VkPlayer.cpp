@@ -18,6 +18,9 @@ namespace onart {
 
 	VkInstance VkPlayer::instance = nullptr;
 	VkPlayer::PhysicalDevice VkPlayer::physicalDevice{};
+	VkDevice VkPlayer::device = nullptr;
+	VkQueue VkPlayer::graphicsQueue = nullptr;
+	VkQueue VkPlayer::transferQueue = nullptr;
 
 	void VkPlayer::start() {
 		if (init()) {
@@ -33,7 +36,8 @@ namespace onart {
 	bool VkPlayer::init() {
 		return 
 			createInstance()
-			&& findPhysicalDevice();
+			&& findPhysicalDevice()
+			&& createDevice();
 	}
 
 	void VkPlayer::mainLoop() {
@@ -41,6 +45,7 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroyDevice();
 		destroyInstance();
 	}
 
@@ -107,5 +112,37 @@ namespace onart {
 		if (!ret.graphicsFamily.has_value() && !ret.transferFamily.has_value()) { return {}; }
 		ret.card = card;
 		return ret;
+	}
+
+	bool VkPlayer::createDevice() {
+		VkDeviceQueueCreateInfo qInfo[2]{};
+		float queuePriority = 1.0f;
+		qInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		qInfo[0].queueFamilyIndex = physicalDevice.graphicsFamily.value();
+		qInfo[0].queueCount = 1;
+		qInfo[0].pQueuePriorities = &queuePriority;
+		qInfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		qInfo[1].queueFamilyIndex = physicalDevice.transferFamily.value();
+		qInfo[1].queueCount = 1;
+		qInfo[1].pQueuePriorities = &queuePriority;
+		
+		VkPhysicalDeviceFeatures features{};
+
+		VkDeviceCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		info.pQueueCreateInfos = qInfo;
+		info.queueCreateInfoCount = (physicalDevice.graphicsFamily.value() == physicalDevice.transferFamily.value()) ? 1 : 2;
+		info.pEnabledFeatures = &features;
+
+		bool result = vkCreateDevice(physicalDevice.card, &info, nullptr, &device) == VK_SUCCESS;
+		if (result) {
+			vkGetDeviceQueue(device, physicalDevice.graphicsFamily.value(), 0, &graphicsQueue);
+			vkGetDeviceQueue(device, physicalDevice.transferFamily.value(), 0, &transferQueue);
+		}
+		return result;
+	}
+
+	void VkPlayer::destroyDevice() {
+		vkDestroyDevice(device, nullptr);
 	}
 }

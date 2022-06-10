@@ -29,6 +29,9 @@ namespace onart {
 			std::optional<uint32_t> graphicsFamily;
 			std::optional<uint32_t> transferFamily;
 		}physicalDevice;							// 물리 장치
+		static VkDevice device;						// 가상 장치
+		static VkQueue graphicsQueue;						// 큐 1
+		static VkQueue transferQueue;						// 큐 2
 	private:	// 함수
 		// GLFW, Vulkan을 비롯하여 필요한 모든 것을 초기화합니다.
 		static bool init();
@@ -44,6 +47,10 @@ namespace onart {
 		static bool findPhysicalDevice();
 		// 주어진 물리 장치에 대하여 그래픽스, 전송 큐가 가능하다면 함께 묶어 리턴합니다.
 		static PhysicalDevice setQueueFamily(VkPhysicalDevice card);
+		// 가상(logical) 장치를 생성합니다.
+		static bool createDevice();
+		// 가상 장치를 해제합니다.
+		static void destroyDevice();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
