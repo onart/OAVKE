@@ -7,6 +7,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 *************************************************************************/
 #include "VkPlayer.h"
 #include "externals/shaderc/shaderc.hpp"
+#include <thread>
 
 #ifdef _MSC_VER
 	#pragma comment(lib, "externals/vulkan/vulkan-1.lib")
@@ -22,6 +23,11 @@ namespace onart {
 	VkQueue VkPlayer::graphicsQueue = nullptr;
 	VkCommandPool VkPlayer::commandPool = nullptr;
 	VkCommandBuffer VkPlayer::commandBuffers[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	GLFWwindow* VkPlayer::window = nullptr;
+	uint16_t VkPlayer::width = 800, VkPlayer::height = 640;
+	VkSurfaceKHR VkPlayer::surface = nullptr;
+	int VkPlayer::frame = 1;
+	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
 	void VkPlayer::start() {
 		if (init()) {
@@ -31,24 +37,37 @@ namespace onart {
 	}
 
 	void VkPlayer::exit() {
-
+		
 	}
 
 	bool VkPlayer::init() {
 		return 
 			createInstance()
+			&& createWindow()
 			&& findPhysicalDevice()
 			&& createDevice()
 			&& createCommandPool();
 	}
 
 	void VkPlayer::mainLoop() {
+		for (frame = 1; glfwWindowShouldClose(window) != GLFW_TRUE; frame++) {
+			glfwPollEvents();
+			static float prev = 0;
+			tp = (float)glfwGetTime();
+			dt = tp - prev;
+			idt = 1.0f / dt;
+			if ((frame & 15) == 0) printf("%f\r",idt);
 
+			//std::this_thread::sleep_until()
+			prev = tp;
+			// loop body
+		}
 	}
 
 	void VkPlayer::finalize() {
 		destroyCommandPool();
 		destroyDevice();
+		destroyWindow();
 		destroyInstance();
 	}
 
@@ -65,6 +84,12 @@ namespace onart {
 		VkInstanceCreateInfo info{};	// 일단 모두 0으로 초기화함
 		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 고정값
 		info.pApplicationInfo = &ainfo;
+		
+		std::vector<std::string> names = getNeededInstanceExtensions();
+		std::vector<const char*> pnames(names.size());
+		for (size_t i = 0; i < pnames.size(); i++) { pnames[i] = names[i].c_str(); }
+		info.enabledExtensionCount = (uint32_t)pnames.size();
+		info.ppEnabledExtensionNames = pnames.data();
 
 		if constexpr (USE_VALIDATION_LAYER) {
 			info.enabledLayerCount = VALIDATION_LAYER_COUNT;
@@ -162,5 +187,46 @@ namespace onart {
 	void VkPlayer::destroyCommandPool() {
 		vkFreeCommandBuffers(device, commandPool, COMMANDBUFFER_COUNT, commandBuffers);
 		vkDestroyCommandPool(device, commandPool, nullptr);
+	}
+
+	bool VkPlayer::createWindow() {
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		window = glfwCreateWindow(width, height, u8"OAVKE", nullptr, nullptr);
+		if (!window) {
+			fprintf(stderr, "Failed to create window\n");
+			return false;
+		}
+		if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create window surface\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyWindow() {
+		vkDestroySurfaceKHR(instance, surface, nullptr);
+		glfwDestroyWindow(window);
+	}
+
+	std::vector<std::string> VkPlayer::getNeededInstanceExtensions() {
+		if (glfwInit() != GLFW_TRUE) {
+			fprintf(stderr, "Failed to initialize GLFW\n");
+			return {};
+		}
+		if (glfwVulkanSupported() != GLFW_TRUE) {
+			fprintf(stderr, "Vulkan not supported with GLFW\n");
+			return {};
+		}
+		const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+		idt = (float)mode->refreshRate;
+		dt = 1.0f / idt;
+		uint32_t count;
+		const char** names = glfwGetRequiredInstanceExtensions(&count);
+		std::vector<std::string> strs(count);
+		for (uint32_t i = 0; i < count; i++) {
+			strs[i] = names[i];
+		}
+		return strs;
 	}
 }

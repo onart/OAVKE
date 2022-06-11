@@ -8,9 +8,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 #ifndef __VK_PLAYER_H__
 #define __VK_PLAYER_H__
 
+#include <string>
 #include <vector>
 #include <cstdint>
-#include <optional>
+#include <chrono>
 
 #define GLFW_INCLUDE_VULKAN
 #include "externals/glfw/glfw3.h"
@@ -31,7 +32,12 @@ namespace onart {
 		static VkDevice device;						// 가상 장치
 		static VkQueue graphicsQueue;				// 큐
 		static VkCommandPool commandPool;			// 명령풀
-		static VkCommandBuffer commandBuffers[];		// 명령 버퍼
+		static VkCommandBuffer commandBuffers[];	// 명령 버퍼
+		static GLFWwindow* window;					// 응용 창
+		static uint16_t width, height;				// 창 크기
+		static VkSurfaceKHR surface;				// 창 표면
+		static int frame;							// 프레임 번호(1부터 시작)
+		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 	private:	// 함수
 		// GLFW, Vulkan을 비롯하여 필요한 모든 것을 초기화합니다.
 		static bool init();
@@ -55,6 +61,12 @@ namespace onart {
 		static bool createCommandPool();
 		// 명령 풀과 버퍼를 제거합니다.
 		static void destroyCommandPool();
+		// 응용 창에 벌칸을 통합합니다.
+		static bool createWindow();
+		// 창을 제거합니다.
+		static void destroyWindow();
+		// 인스턴스에 대하여 활성화할 확장 이름들을 가져옵니다.
+		static std::vector<std::string> getNeededInstanceExtensions();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
