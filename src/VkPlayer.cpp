@@ -20,7 +20,8 @@ namespace onart {
 	VkPlayer::PhysicalDevice VkPlayer::physicalDevice{};
 	VkDevice VkPlayer::device = nullptr;
 	VkQueue VkPlayer::graphicsQueue = nullptr;
-	VkQueue VkPlayer::transferQueue = nullptr;
+	VkCommandPool VkPlayer::commandPool = nullptr;
+	VkCommandBuffer VkPlayer::commandBuffers[VkPlayer::COMMANDBUFFER_COUNT] = {};
 
 	void VkPlayer::start() {
 		if (init()) {
@@ -37,7 +38,8 @@ namespace onart {
 		return 
 			createInstance()
 			&& findPhysicalDevice()
-			&& createDevice();
+			&& createDevice()
+			&& createCommandPool();
 	}
 
 	void VkPlayer::mainLoop() {
@@ -45,6 +47,7 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroyCommandPool();
 		destroyDevice();
 		destroyInstance();
 	}
@@ -99,50 +102,65 @@ namespace onart {
 
 	
 	VkPlayer::PhysicalDevice VkPlayer::setQueueFamily(VkPhysicalDevice card) {
-		PhysicalDevice ret{};
 		uint32_t qfcount;
 		vkGetPhysicalDeviceQueueFamilyProperties(card, &qfcount, nullptr);
 		std::vector<VkQueueFamilyProperties> qfs(qfcount);
 		vkGetPhysicalDeviceQueueFamilyProperties(card, &qfcount, qfs.data());
 		for (uint32_t i = 0; i < qfcount; i++) {
-			if (qfs[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT)) { return { card,i,i }; }
-			if (!ret.graphicsFamily.has_value() && (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) { ret.graphicsFamily = i; }
-			if (!ret.transferFamily.has_value() && (qfs[i].queueFlags & VK_QUEUE_TRANSFER_BIT)) { ret.transferFamily = i; }
+			if (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) { return { card,i }; }
 		}
-		if (!ret.graphicsFamily.has_value() && !ret.transferFamily.has_value()) { return {}; }
-		ret.card = card;
-		return ret;
+		return {};
 	}
 
 	bool VkPlayer::createDevice() {
-		VkDeviceQueueCreateInfo qInfo[2]{};
+		VkDeviceQueueCreateInfo qInfo[1]{};
 		float queuePriority = 1.0f;
 		qInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		qInfo[0].queueFamilyIndex = physicalDevice.graphicsFamily.value();
+		qInfo[0].queueFamilyIndex = physicalDevice.graphicsFamily;
 		qInfo[0].queueCount = 1;
 		qInfo[0].pQueuePriorities = &queuePriority;
-		qInfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		qInfo[1].queueFamilyIndex = physicalDevice.transferFamily.value();
-		qInfo[1].queueCount = 1;
-		qInfo[1].pQueuePriorities = &queuePriority;
 		
 		VkPhysicalDeviceFeatures features{};
 
 		VkDeviceCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		info.pQueueCreateInfos = qInfo;
-		info.queueCreateInfoCount = (physicalDevice.graphicsFamily.value() == physicalDevice.transferFamily.value()) ? 1 : 2;
+		info.queueCreateInfoCount = sizeof(qInfo) / sizeof(VkDeviceQueueCreateInfo);
 		info.pEnabledFeatures = &features;
 
 		bool result = vkCreateDevice(physicalDevice.card, &info, nullptr, &device) == VK_SUCCESS;
-		if (result) {
-			vkGetDeviceQueue(device, physicalDevice.graphicsFamily.value(), 0, &graphicsQueue);
-			vkGetDeviceQueue(device, physicalDevice.transferFamily.value(), 0, &transferQueue);
-		}
+		if (result) { vkGetDeviceQueue(device, physicalDevice.graphicsFamily, 0, &graphicsQueue); }
+		else { fprintf(stderr, "Failed to create logical device\n"); }
 		return result;
 	}
 
 	void VkPlayer::destroyDevice() {
 		vkDestroyDevice(device, nullptr);
+	}
+
+	bool VkPlayer::createCommandPool() {
+		VkCommandPoolCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		info.queueFamilyIndex = physicalDevice.graphicsFamily;
+		
+		if (vkCreateCommandPool(device, &info, nullptr, &commandPool) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create graphics/transfer command pool\n");
+			return false;
+		}
+		VkCommandBufferAllocateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		bufferInfo.commandPool = commandPool;
+		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		bufferInfo.commandBufferCount = COMMANDBUFFER_COUNT;
+		if (vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create graphics/transfer command buffers\n");
+			return false;
+		}
+		return true;
+	}
+	
+	void VkPlayer::destroyCommandPool() {
+		vkFreeCommandBuffers(device, commandPool, COMMANDBUFFER_COUNT, commandBuffers);
+		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 }

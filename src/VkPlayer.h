@@ -26,12 +26,12 @@ namespace onart {
 		static VkInstance instance;					// 인스턴스
 		static struct PhysicalDevice {
 			VkPhysicalDevice card;
-			std::optional<uint32_t> graphicsFamily;
-			std::optional<uint32_t> transferFamily;
+			uint32_t graphicsFamily;
 		}physicalDevice;							// 물리 장치
 		static VkDevice device;						// 가상 장치
-		static VkQueue graphicsQueue;						// 큐 1
-		static VkQueue transferQueue;						// 큐 2
+		static VkQueue graphicsQueue;				// 큐
+		static VkCommandPool commandPool;			// 명령풀
+		static VkCommandBuffer commandBuffers[];		// 명령 버퍼
 	private:	// 함수
 		// GLFW, Vulkan을 비롯하여 필요한 모든 것을 초기화합니다.
 		static bool init();
@@ -51,10 +51,15 @@ namespace onart {
 		static bool createDevice();
 		// 가상 장치를 해제합니다.
 		static void destroyDevice();
+		// 명령 풀과 버퍼를 생성합니다.
+		static bool createCommandPool();
+		// 명령 풀과 버퍼를 제거합니다.
+		static void destroyCommandPool();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
-		constexpr static const int VALIDATION_LAYER_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(const char*);
+		constexpr static int VALIDATION_LAYER_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(const char*);
+		constexpr static int COMMANDBUFFER_COUNT = 4;
 	};
 }
 
