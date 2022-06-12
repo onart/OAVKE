@@ -28,14 +28,17 @@ namespace onart {
 		static struct PhysicalDevice {
 			VkPhysicalDevice card;
 			uint32_t graphicsFamily;
+			uint32_t presentFamily;
 		}physicalDevice;							// 물리 장치
 		static VkDevice device;						// 가상 장치
-		static VkQueue graphicsQueue;				// 큐
+		static VkQueue graphicsQueue, presentQueue;	// 큐
 		static VkCommandPool commandPool;			// 명령풀
 		static VkCommandBuffer commandBuffers[];	// 명령 버퍼
 		static GLFWwindow* window;					// 응용 창
-		static uint16_t width, height;				// 창 크기
+		static uint32_t width, height;				// 창 크기
 		static VkSurfaceKHR surface;				// 창 표면
+		static VkSwapchainKHR swapchain;			// 스왑 체인
+
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 	private:	// 함수
@@ -67,11 +70,20 @@ namespace onart {
 		static void destroyWindow();
 		// 인스턴스에 대하여 활성화할 확장 이름들을 가져옵니다.
 		static std::vector<std::string> getNeededInstanceExtensions();
+		// 스왑 체인을 생성합니다.
+		static bool createSwapchain();
+		// 스왑 체인을 해제합니다.
+		static void destroySwapchain();
+		// 물리 장치의 원하는 확장 지원 여부를 확인합니다.
+		static bool checkDeviceExtension(VkPhysicalDevice);
+		
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
 		constexpr static int VALIDATION_LAYER_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(const char*);
 		constexpr static int COMMANDBUFFER_COUNT = 4;
+		constexpr static const char* DEVICE_EXT[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		constexpr static int DEVICE_EXT_COUNT = sizeof(DEVICE_EXT) / sizeof(const char*);
 	};
 }
 
