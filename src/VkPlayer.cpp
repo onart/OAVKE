@@ -29,6 +29,8 @@ namespace onart {
 	uint32_t VkPlayer::width = 800, VkPlayer::height = 640;
 	VkSurfaceKHR VkPlayer::surface = nullptr;
 	VkSwapchainKHR VkPlayer::swapchain = nullptr;
+	std::vector<VkImageView> VkPlayer::swapchainImageViews;
+	VkFormat VkPlayer::swapchainImageFormat;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -41,7 +43,7 @@ namespace onart {
 	}
 
 	void VkPlayer::exit() {
-		
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
 	}
 
 	bool VkPlayer::init() {
@@ -51,7 +53,9 @@ namespace onart {
 			&& findPhysicalDevice()
 			&& createDevice()
 			&& createCommandPool()
-			&& createSwapchain();
+			&& createSwapchain()
+			&& createSwapchainImageViews()
+			;
 	}
 
 	void VkPlayer::mainLoop() {
@@ -68,6 +72,7 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroySwapchainImageViews();
 		destroySwapchain();
 		destroyCommandPool();
 		destroyDevice();
@@ -279,7 +284,7 @@ namespace onart {
 		info.surface = surface;
 		
 		info.minImageCount = caps.minImageCount > caps.maxImageCount - 1 ? caps.minImageCount + 1 : caps.maxImageCount;
-		info.imageFormat = sf.format;
+		info.imageFormat = swapchainImageFormat = sf.format;
 		info.imageColorSpace = sf.colorSpace;
 		info.imageExtent.width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
 		info.imageExtent.height = std::clamp(height, caps.minImageExtent.height, caps.maxImageExtent.height);
@@ -325,5 +330,37 @@ namespace onart {
 			if (!flag)return false;
 		}
 		return true;
+	}
+
+	bool VkPlayer::createSwapchainImageViews() {
+		uint32_t count;
+		vkGetSwapchainImagesKHR(device, swapchain, &count, nullptr);
+		std::vector<VkImage> images(count);
+		vkGetSwapchainImagesKHR(device, swapchain, &count, images.data());
+		swapchainImageViews.resize(count);
+		VkImageViewCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		info.format = swapchainImageFormat;
+		info.components.r = info.components.g = info.components.b = info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		info.subresourceRange.levelCount = 1;
+		info.subresourceRange.baseArrayLayer = 0;
+		info.subresourceRange.layerCount = 1;
+
+		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+			info.image = images[i];
+			if (vkCreateImageView(device, &info, nullptr, &swapchainImageViews[i]) != VK_SUCCESS) {
+				fprintf(stderr,"Failed to create image views\n");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void VkPlayer::destroySwapchainImageViews() {
+		for (int i = 0; i < swapchainImageViews.size(); i++) {
+			vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+		}
 	}
 }

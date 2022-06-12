@@ -38,6 +38,8 @@ namespace onart {
 		static uint32_t width, height;				// 창 크기
 		static VkSurfaceKHR surface;				// 창 표면
 		static VkSwapchainKHR swapchain;			// 스왑 체인
+		static std::vector<VkImageView> swapchainImageViews;	// 스왑 체인 이미지 뷰
+		static VkFormat swapchainImageFormat;		// 스왑 체인 이미지의 형식
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -76,7 +78,10 @@ namespace onart {
 		static void destroySwapchain();
 		// 물리 장치의 원하는 확장 지원 여부를 확인합니다.
 		static bool checkDeviceExtension(VkPhysicalDevice);
-		
+		// 스왑 체인에서 이미지 뷰를 생성합니다.
+		static bool createSwapchainImageViews();
+		// 스왑 체인의 이미지 뷰를 해제합니다.
+		static void destroySwapchainImageViews();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
