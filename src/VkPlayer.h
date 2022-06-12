@@ -40,6 +40,7 @@ namespace onart {
 		static VkSwapchainKHR swapchain;			// 스왑 체인
 		static std::vector<VkImageView> swapchainImageViews;	// 스왑 체인 이미지 뷰
 		static VkFormat swapchainImageFormat;		// 스왑 체인 이미지의 형식
+		static VkRenderPass renderPass0;			// 단순 렌더패스
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -82,6 +83,14 @@ namespace onart {
 		static bool createSwapchainImageViews();
 		// 스왑 체인의 이미지 뷰를 해제합니다.
 		static void destroySwapchainImageViews();
+		// 렌더패스를 생성합니다.
+		static bool createRenderPasses();
+		// 렌더패스를 해제합니다.
+		static void destroyRenderPasses();
+		// 단순 렌더링을 위한 패스를 생성합니다.
+		static bool createRenderPass0();
+		// 단순 렌더링을 위한 패스를 제거합니다.
+		static void destroyRenderPass0();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

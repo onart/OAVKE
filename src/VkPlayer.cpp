@@ -31,6 +31,7 @@ namespace onart {
 	VkSwapchainKHR VkPlayer::swapchain = nullptr;
 	std::vector<VkImageView> VkPlayer::swapchainImageViews;
 	VkFormat VkPlayer::swapchainImageFormat;
+	VkRenderPass VkPlayer::renderPass0;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -362,5 +363,50 @@ namespace onart {
 		for (int i = 0; i < swapchainImageViews.size(); i++) {
 			vkDestroyImageView(device, swapchainImageViews[i], nullptr);
 		}
+	}
+
+	bool VkPlayer::createRenderPasses() {
+		createRenderPass0();
+	}
+
+	void VkPlayer::destroyRenderPasses() {
+
+	}
+
+	bool VkPlayer::createRenderPass0() {
+		VkAttachmentDescription colorAttachment{};	// 실제 첨부물이 아님. 실제 첨부물을 읽을 방식을 정의
+		colorAttachment.format = swapchainImageFormat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		VkAttachmentReference colorAttachmentRef{};	// 서브패스가 볼 번호와 레이아웃 정의
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+
+		VkRenderPassCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		info.attachmentCount = 1;
+		info.pAttachments = &colorAttachment;
+		info.pSubpasses = &subpass;
+		info.subpassCount = 1;
+		if (vkCreateRenderPass(device, &info, nullptr, &renderPass0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create render pass\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyRenderPass0() {
+
 	}
 }
