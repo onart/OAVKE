@@ -38,9 +38,11 @@ namespace onart {
 		static uint32_t width, height;				// 창 크기
 		static VkSurfaceKHR surface;				// 창 표면
 		static VkSwapchainKHR swapchain;			// 스왑 체인
+		static VkExtent2D swapchainExtent;			// 실제 만들어진 스왑체인 이미지 크기
 		static std::vector<VkImageView> swapchainImageViews;	// 스왑 체인 이미지 뷰
 		static VkFormat swapchainImageFormat;		// 스왑 체인 이미지의 형식
 		static VkRenderPass renderPass0;			// 단순 렌더패스
+		static std::vector<VkFramebuffer> endFramebuffers;	// 스왑체인 이미지를 참조하는 프레임버퍼
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -91,6 +93,15 @@ namespace onart {
 		static bool createRenderPass0();
 		// 단순 렌더링을 위한 패스를 제거합니다.
 		static void destroyRenderPass0();
+		// 필요한 프레임버퍼를 생성합니다.
+		static bool createFramebuffers();
+		// 프레임버퍼를 해제합니다.
+		static void destroyFramebuffers();
+		// 최종 단계(스왑 체인에 연결된)의 프레임버퍼를 생성합니다.
+		static bool createEndFramebuffers();
+		// 최종 단계(스왑 체인에 연결된)의 프레임버퍼를 해제합니다.
+		static void destroyEndFramebuffers();
+		// 
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

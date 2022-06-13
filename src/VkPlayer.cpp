@@ -27,11 +27,13 @@ namespace onart {
 	VkCommandBuffer VkPlayer::commandBuffers[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	GLFWwindow* VkPlayer::window = nullptr;
 	uint32_t VkPlayer::width = 800, VkPlayer::height = 640;
+	VkExtent2D VkPlayer::swapchainExtent;
 	VkSurfaceKHR VkPlayer::surface = nullptr;
 	VkSwapchainKHR VkPlayer::swapchain = nullptr;
 	std::vector<VkImageView> VkPlayer::swapchainImageViews;
 	VkFormat VkPlayer::swapchainImageFormat;
 	VkRenderPass VkPlayer::renderPass0;
+	std::vector<VkFramebuffer> VkPlayer::endFramebuffers;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -56,6 +58,8 @@ namespace onart {
 			&& createCommandPool()
 			&& createSwapchain()
 			&& createSwapchainImageViews()
+			&& createRenderPasses()
+			&& createFramebuffers()
 			;
 	}
 
@@ -73,6 +77,8 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroyFramebuffers();
+		destroyRenderPasses();
 		destroySwapchainImageViews();
 		destroySwapchain();
 		destroyCommandPool();
@@ -178,7 +184,7 @@ namespace onart {
 		VkDeviceCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		info.pQueueCreateInfos = qInfo;
-		info.queueCreateInfoCount = 1 + physicalDevice.graphicsFamily != physicalDevice.presentFamily;
+		info.queueCreateInfoCount = 1 + (physicalDevice.graphicsFamily != physicalDevice.presentFamily);
 		info.pEnabledFeatures = &features;
 		info.ppEnabledExtensionNames = DEVICE_EXT;
 		info.enabledExtensionCount = DEVICE_EXT_COUNT;
@@ -302,12 +308,13 @@ namespace onart {
 		else {
 			info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			info.queueFamilyIndexCount = 2;
-			info.pQueueFamilyIndices = &physicalDevice.graphicsFamily;
+			info.pQueueFamilyIndices = &physicalDevice.graphicsFamily; // 나중에 더 직관적으로 변경
 		}
 		if (vkCreateSwapchainKHR(device, &info, nullptr, &swapchain) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create swapchain\n");
 			return false;
 		}
+		swapchainExtent = info.imageExtent;
 		return true;
 	}
 
@@ -348,7 +355,6 @@ namespace onart {
 		info.subresourceRange.levelCount = 1;
 		info.subresourceRange.baseArrayLayer = 0;
 		info.subresourceRange.layerCount = 1;
-
 		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
 			info.image = images[i];
 			if (vkCreateImageView(device, &info, nullptr, &swapchainImageViews[i]) != VK_SUCCESS) {
@@ -366,11 +372,11 @@ namespace onart {
 	}
 
 	bool VkPlayer::createRenderPasses() {
-		createRenderPass0();
+		return createRenderPass0();
 	}
 
 	void VkPlayer::destroyRenderPasses() {
-
+		destroyRenderPass0();
 	}
 
 	bool VkPlayer::createRenderPass0() {
@@ -400,13 +406,49 @@ namespace onart {
 		info.pSubpasses = &subpass;
 		info.subpassCount = 1;
 		if (vkCreateRenderPass(device, &info, nullptr, &renderPass0) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to create render pass\n");
+			fprintf(stderr, "Failed to create render pass 0\n");
 			return false;
 		}
 		return true;
 	}
 
 	void VkPlayer::destroyRenderPass0() {
-
+		vkDestroyRenderPass(device, renderPass0, nullptr);
 	}
+
+	bool VkPlayer::createFramebuffers() {
+		return createEndFramebuffers();
+	}
+
+	bool VkPlayer::createEndFramebuffers() {
+		endFramebuffers.resize(swapchainImageViews.size());
+		VkFramebufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		info.width = swapchainExtent.width;
+		info.height = swapchainExtent.height;
+		info.layers = 1;
+		info.renderPass = renderPass0;
+
+		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+			VkImageView attachments[] = { swapchainImageViews[i] };
+			info.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
+			info.pAttachments = attachments;
+			if (vkCreateFramebuffer(device, &info, nullptr, &endFramebuffers[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to create framebuffer\n");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyFramebuffers() {
+		destroyEndFramebuffers();
+	}
+
+	void VkPlayer::destroyEndFramebuffers() {
+		for (VkFramebuffer fb : endFramebuffers) {
+			vkDestroyFramebuffer(device, fb, nullptr);
+		}
+	}
+
 }
