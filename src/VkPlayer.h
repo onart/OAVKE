@@ -16,6 +16,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 #define GLFW_INCLUDE_VULKAN
 #include "externals/glfw/glfw3.h"
 
+#include "externals/shaderc/shaderc.hpp"
+
 namespace onart {
 	class VkPlayer {
 	public:
@@ -43,6 +45,8 @@ namespace onart {
 		static VkFormat swapchainImageFormat;		// 스왑 체인 이미지의 형식
 		static VkRenderPass renderPass0;			// 단순 렌더패스
 		static std::vector<VkFramebuffer> endFramebuffers;	// 스왑체인 이미지를 참조하는 프레임버퍼
+		static VkPipeline pipeline0;				// 단순 렌더링(변환 - 텍스처,라이팅 하고 끝) 파이프라인
+		static VkPipelineLayout pipelineLayout0;	// 0번의 레이아웃
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -101,7 +105,22 @@ namespace onart {
 		static bool createEndFramebuffers();
 		// 최종 단계(스왑 체인에 연결된)의 프레임버퍼를 해제합니다.
 		static void destroyEndFramebuffers();
-		// 
+		// 필요한 파이프라인을 생성합니다.
+		static bool createPipelines();
+		// 파이프라인을 해제합니다.
+		static void destroyPipelines();
+		// 단순 파이프라인을 생성합니다.
+		static bool createPipeline0();
+		// 단순 파이프라인을 해제합니다.
+		static void destroyPipeline0();
+		// SPIR-V 코드를 받아 셰이더 모듈을 생성합니다.
+		static VkShaderModule createShaderModuleFromSpv(const std::vector<uint32_t>& bcode);
+		// SPIR-V 코드를 파일에서 읽어 셰이더 모듈을 생성합니다.
+		static VkShaderModule createShaderModule(const char* fileName);
+		// GLSL 코드를 파일에서 읽어 셰이더 모듈을 생성합니다.
+		static VkShaderModule createShaderModule(const char* fileName, shaderc_shader_kind kind);
+		// 메모리 상의 변수로부터 GLSL 코드를 읽어 모듈을 생성합니다.
+		static VkShaderModule createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name);
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

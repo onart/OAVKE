@@ -147,6 +147,10 @@
   <ItemGroup>
     <ClInclude Include="VkPlayer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\bin\tri.frag" />
+    <None Include="..\bin\tri.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

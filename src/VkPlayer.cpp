@@ -6,7 +6,6 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *************************************************************************/
 #include "VkPlayer.h"
-#include "externals/shaderc/shaderc.hpp"
 #include <thread>
 #include <algorithm>
 #include <cstring>
@@ -32,8 +31,10 @@ namespace onart {
 	VkSwapchainKHR VkPlayer::swapchain = nullptr;
 	std::vector<VkImageView> VkPlayer::swapchainImageViews;
 	VkFormat VkPlayer::swapchainImageFormat;
-	VkRenderPass VkPlayer::renderPass0;
+	VkRenderPass VkPlayer::renderPass0 = nullptr;
 	std::vector<VkFramebuffer> VkPlayer::endFramebuffers;
+	VkPipeline VkPlayer::pipeline0 = nullptr;
+	VkPipelineLayout VkPlayer::pipelineLayout0 = nullptr;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -60,6 +61,7 @@ namespace onart {
 			&& createSwapchainImageViews()
 			&& createRenderPasses()
 			&& createFramebuffers()
+			&& createPipelines()
 			;
 	}
 
@@ -77,6 +79,7 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroyPipelines();
 		destroyFramebuffers();
 		destroyRenderPasses();
 		destroySwapchainImageViews();
@@ -460,5 +463,246 @@ namespace onart {
 			vkDestroyFramebuffer(device, fb, nullptr);
 		}
 	}
+
+	bool VkPlayer::createPipelines() {
+		return createPipeline0();
+	}
+
+	void VkPlayer::destroyPipelines() {
+		destroyPipeline0();
+	}
+
+	struct Vertex {	// 임시
+		float pos[3];
+		float color[3];
+	};
+
+	bool VkPlayer::createPipeline0() {
+		// programmable function: 세이더 종류는 수십 가지쯤 돼 보이므로, 오버로드로 수용할 것
+		VkShaderModule vertModule = createShaderModule("tri.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
+		VkShaderModule fragModule = createShaderModule("tri.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
+		VkPipelineShaderStageCreateInfo shaderStagesInfo[2] = {};
+		shaderStagesInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStagesInfo[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		shaderStagesInfo[0].module = vertModule;
+		shaderStagesInfo[0].pName = "main";
+
+		shaderStagesInfo[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStagesInfo[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		shaderStagesInfo[1].module = fragModule;
+		shaderStagesInfo[1].pName = "main";
+
+		// fixed function: 정점 입력 데이터 형식. 우선 공란
+		VkVertexInputBindingDescription vbind{};
+		vbind.binding = 0;
+		vbind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		vbind.stride = sizeof(Vertex);
+
+		VkVertexInputAttributeDescription vattrs[2]{};
+		vattrs[0].binding = 0;
+		vattrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		vattrs[0].location = 0;
+		vattrs[0].offset = offsetof(Vertex, pos);
+
+		vattrs[1].binding = 0;
+		vattrs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		vattrs[1].location = 1;
+		vattrs[1].offset = offsetof(Vertex, color);
+		
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &vbind;
+		vertexInputInfo.vertexAttributeDescriptionCount = 2;
+		vertexInputInfo.pVertexAttributeDescriptions = vattrs;
+		
+		// fixed function: 정점 모으기
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3개씩 끊어 삼각형
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff 혹은 0xffffffff 인덱스로 스트립 끊기 가능 여부
+		
+		// fixed function: 뷰포트, 시저 (뷰포트: cvv상 그림이 그려질 최종 직사각형, 시저: 스왑체인 이미지에서 그려지는 것을 허용할 부분)
+		// ** 뷰포트는 런타임에 조정 가능 ** 
+		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)swapchainExtent.width;
+		viewport.height = (float)swapchainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor{};
+		scissor.offset = { 0,0 };
+		scissor.extent = swapchainExtent;
+
+		VkPipelineViewportStateCreateInfo viewportStateInfo{};
+		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportStateInfo.viewportCount = 1;
+		viewportStateInfo.pViewports = &viewport;
+		viewportStateInfo.scissorCount = 1;
+		viewportStateInfo.pScissors = &scissor;
+
+		// fixed function: 래스터라이저
+		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizerInfo.depthClampEnable = VK_FALSE;	// 표준 뷰 볼륨의 z좌표가 초과하면 잘라내지 않고 z값 자체를 줄이면서 살림
+		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUE인 경우 출력이 안됨
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// 와이어프레임 등 지정 가능. 아마 건드릴 일 없을 것
+		rasterizerInfo.lineWidth = 1.0f;					// 선 너비: 건드릴 일 없음
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// 면 거름: 건드릴 일 있음
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// 이건 건드릴 일 없을 듯
+		rasterizerInfo.depthBiasEnable = VK_FALSE;			// 여기부터 4개는 깊이 값을 직접 건드리는 부분. 사용할 일 없을 듯
+		rasterizerInfo.depthBiasConstantFactor = 0.0f;
+		rasterizerInfo.depthBiasClamp = 0.0f;
+		rasterizerInfo.depthBiasSlopeFactor = 0.0f;
+		
+		// fixed function: 멀티샘플링 (현재는 공란으로)
+		// 안티에일리어싱에 사용하는 경우에 대하여 매개변수 수용할 필요가 있을듯
+		VkPipelineMultisampleStateCreateInfo msInfo{};
+		msInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		msInfo.sampleShadingEnable = VK_FALSE;
+		msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		msInfo.minSampleShading = 1.0f;
+		msInfo.alphaToCoverageEnable = VK_FALSE;
+		msInfo.alphaToOneEnable = VK_FALSE;
+		msInfo.pSampleMask = nullptr;
+
+		VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+		
+		// fixed function: 색 블렌딩
+		// 블렌딩은 대체로 SRC_ALPHA, 1-SRC_ALPHA로 하니 반투명이 없을 거라면 성능을 위해 끄는 정도?
+		VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
+		colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachmentState.blendEnable = VK_TRUE;
+		colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+		VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
+		colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendInfo.logicOpEnable = VK_FALSE;
+		colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
+		colorBlendInfo.attachmentCount = 1;
+		colorBlendInfo.pAttachments = &colorBlendAttachmentState;
+		colorBlendInfo.blendConstants[0] = 0.0f;
+		colorBlendInfo.blendConstants[1] = 0.0f;
+		colorBlendInfo.blendConstants[2] = 0.0f;
+		colorBlendInfo.blendConstants[3] = 0.0f;
+
+		VkDynamicState dynamicStates[1] = { /*VK_DYNAMIC_STATE_VIEWPORT*/ };
+		VkPipelineDynamicStateCreateInfo dynamics{};
+		dynamics.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamics.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
+		dynamics.pDynamicStates = dynamicStates;
+
+		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;
+		pipelineLayoutInfo.pSetLayouts = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout0);
+
+		// 파이프라인 생성
+		VkGraphicsPipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = sizeof(shaderStagesInfo) / sizeof(shaderStagesInfo[0]);
+		pipelineInfo.pStages = shaderStagesInfo;
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
+		pipelineInfo.pViewportState = &viewportStateInfo;
+		pipelineInfo.pRasterizationState = &rasterizerInfo;
+		pipelineInfo.pMultisampleState = &msInfo;
+		pipelineInfo.pDepthStencilState = nullptr;	// 보류
+		pipelineInfo.pColorBlendState = &colorBlendInfo;
+		pipelineInfo.pDynamicState = nullptr;	// 보류
+		pipelineInfo.layout = pipelineLayout0;
+		pipelineInfo.renderPass = renderPass0;
+		pipelineInfo.subpass = 0;
+		// 아래 2개: 기존 파이프라인을 기반으로 비슷하게 생성하기 위함
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
+
+		VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline0);
+
+		vkDestroyShaderModule(device, vertModule, nullptr);
+		vkDestroyShaderModule(device, fragModule, nullptr);
+		if (result != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create pipeline 0\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyPipeline0() {
+		vkDestroyPipeline(device, pipeline0, nullptr);
+	}
+
+	static std::vector<uint32_t> compileShader(const char* code, size_t size, shaderc_shader_kind kind, const char* name) {
+		shaderc::Compiler compiler;
+		shaderc::CompileOptions opts;
+		opts.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
+		opts.SetInvertY(true);	// 벌칸은 아래쪽이 y=1임 -> opengl과 통일을 위해. * z축은 0~1 범위.. 인데 glsl에는 이 옵션이 의미가 없다는 말이 있음
+		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(code, size, kind, name, opts);
+		if (result.GetCompilationStatus() != shaderc_compilation_status::shaderc_compilation_status_success) {
+			fprintf(stderr, "compiler : %s\n", result.GetErrorMessage().c_str());
+		}
+		return { result.cbegin(),result.cend() };
+	}
+
+	static std::vector<uint32_t> compileShader(const char* fileName, shaderc_shader_kind kind) {
+		FILE* fp;
+		fopen_s(&fp, fileName, "rb");
+		if (!fp) {
+			perror("fopen_s");
+			return {};
+		}
+		fseek(fp, 0, SEEK_END);
+		size_t sz = (size_t)ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		std::string code;
+		code.resize(sz);
+		fread_s(code.data(), sz, 1, sz, fp);
+		std::vector<uint32_t> result = compileShader(code.c_str(), code.size(), kind, fileName);
+		fclose(fp);
+		return result;
+	}
+
+	static std::vector<uint32_t> loadShader(const char* fileName) {
+		FILE* fp;
+		fopen_s(&fp, fileName, "rb");
+		if (!fp) {
+			perror("fopen_s");
+			return {};
+		}
+		fseek(fp, 0, SEEK_END);
+		size_t sz = (size_t)ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		std::vector<uint32_t> bcode(sz / sizeof(uint32_t));
+		fread_s(bcode.data(), sz, sizeof(uint32_t), sz / sizeof(uint32_t), fp);
+		fclose(fp);
+		return bcode;
+	}
+
+	VkShaderModule VkPlayer::createShaderModuleFromSpv(const std::vector<uint32_t>& bcode) {
+		VkShaderModule ret;
+		VkShaderModuleCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		info.pCode = bcode.data();
+		info.codeSize = bcode.size() * sizeof(uint32_t);
+		VkResult res = vkCreateShaderModule(device, &info, nullptr, &ret);
+		if (res == VK_SUCCESS) return ret;
+		else return nullptr;
+	}
+
+	VkShaderModule VkPlayer::createShaderModule(const char* fileName) { return createShaderModuleFromSpv(loadShader(fileName)); }
+	VkShaderModule VkPlayer::createShaderModule(const char* fileName, shaderc_shader_kind kind) { return createShaderModuleFromSpv(compileShader(fileName, kind)); }
+	VkShaderModule VkPlayer::createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name) { return createShaderModuleFromSpv(compileShader(code, size, kind, name)); }
+
 
 }

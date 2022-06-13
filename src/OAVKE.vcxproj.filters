@@ -30,4 +30,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\bin\tri.frag">
+      <Filter>셰이더</Filter>
+    </None>
+    <None Include="..\bin\tri.vert">
+      <Filter>셰이더</Filter>
+    </None>
+  </ItemGroup>
 </Project>
