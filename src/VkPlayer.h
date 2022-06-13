@@ -47,6 +47,7 @@ namespace onart {
 		static std::vector<VkFramebuffer> endFramebuffers;	// 스왑체인 이미지를 참조하는 프레임버퍼
 		static VkPipeline pipeline0;				// 단순 렌더링(변환 - 텍스처,라이팅 하고 끝) 파이프라인
 		static VkPipelineLayout pipelineLayout0;	// 0번의 레이아웃
+		static VkSemaphore fixedSp;					// 고정 세마포어
 
 		static VkBuffer vb;							// 일시적인 고정 정점 버퍼
 		static VkDeviceMemory vbmem;				// vb 메모리 핸들
@@ -128,6 +129,12 @@ namespace onart {
 		static bool createFixedVertexBuffer();
 		// 삼각형 하나를 그리기 위한 정점 버퍼를 해제합니다.
 		static void destroyFixedVertexBuffer();
+		// 고정 정점을 가지고 한 번 그려 봅니다.
+		static void fixedDraw();
+		// 필요한 세마포어를 생성합니다.
+		static bool createSemaphore();
+		// 만든 세마포어를 해제합니다.
+		static void destroySemaphore();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

@@ -35,6 +35,7 @@ namespace onart {
 	std::vector<VkFramebuffer> VkPlayer::endFramebuffers;
 	VkPipeline VkPlayer::pipeline0 = nullptr;
 	VkPipelineLayout VkPlayer::pipelineLayout0 = nullptr;
+	VkSemaphore VkPlayer::fixedSp = nullptr;
 
 	VkBuffer VkPlayer::vb = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr;
@@ -66,6 +67,7 @@ namespace onart {
 			&& createFramebuffers()
 			&& createPipelines()
 			&& createFixedVertexBuffer()
+			&& createSemaphore()
 			;
 	}
 
@@ -79,10 +81,12 @@ namespace onart {
 			if ((frame & 15) == 0) printf("%f\r",idt);
 			prev = tp;
 			// loop body
+			fixedDraw();
 		}
 	}
 
 	void VkPlayer::finalize() {
+		destroySemaphore();
 		destroyFixedVertexBuffer();
 		destroyPipelines();
 		destroyFramebuffers();
@@ -214,7 +218,7 @@ namespace onart {
 		VkCommandPoolCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		info.queueFamilyIndex = physicalDevice.graphicsFamily;
-		
+
 		if (vkCreateCommandPool(device, &info, nullptr, &commandPool) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create graphics/transfer command pool\n");
 			return false;
@@ -757,6 +761,7 @@ namespace onart {
 		}
 		memcpy(data, ar, info.size);
 		vkUnmapMemory(device, vbmem);
+		vkBindBufferMemory(device, vb, vbmem, 0);
 		return true;
 	}
 
@@ -765,4 +770,78 @@ namespace onart {
 		vkDestroyBuffer(device, vb, nullptr);
 	}
 
+	void VkPlayer::fixedDraw() {
+		uint32_t imgIndex;
+		if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, fixedSp, nullptr, &imgIndex) != VK_SUCCESS) {
+			fprintf(stderr, "Fail 1\n");
+			return;
+		}
+		vkResetCommandPool(device, commandPool, 0);
+		
+		VkCommandBufferBeginInfo buffbegin{};
+		buffbegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		buffbegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(commandBuffers[0], &buffbegin) != VK_SUCCESS) {
+			fprintf(stderr, "Fail 2\n");
+			return;
+		}
+
+		VkRenderPassBeginInfo rpbegin{};
+		rpbegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		rpbegin.renderPass = renderPass0;
+		rpbegin.framebuffer = endFramebuffers[imgIndex];
+		rpbegin.renderArea.offset = { 0,0 };
+		rpbegin.renderArea.extent = swapchainExtent;
+		VkClearValue clearColor = { 0.03f,0.03f,0.03f,1.0f };
+		rpbegin.clearValueCount = 1;
+		rpbegin.pClearValues = &clearColor;
+		vkCmdBeginRenderPass(commandBuffers[0], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(commandBuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
+		const VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[0], 0, 1, &vb, offsets);
+		vkCmdDraw(commandBuffers[0], 3, 1, 0, 0);
+		vkCmdEndRenderPass(commandBuffers[0]);
+		if (vkEndCommandBuffer(commandBuffers[0]) != VK_SUCCESS) {
+			fprintf(stderr, "Fail 3\n");
+			return;
+		}
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffers[0];
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &fixedSp;
+		submitInfo.pWaitDstStageMask = waitStages;
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
+			fprintf(stderr, "Fail 4\n");
+			return;
+		}
+		vkQueueWaitIdle(graphicsQueue);
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.pSwapchains = &swapchain;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pImageIndices = &imgIndex;
+		
+		if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS) {
+			fprintf(stderr, "Fail 5\n");
+			return;
+		}
+		vkQueueWaitIdle(presentQueue);
+	}
+
+	bool VkPlayer::createSemaphore() {
+		VkSemaphoreCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		if (vkCreateSemaphore(device, &info, nullptr, &fixedSp) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to create semaphore\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroySemaphore() {
+		vkDestroySemaphore(device, fixedSp, nullptr);
+	}
 }
