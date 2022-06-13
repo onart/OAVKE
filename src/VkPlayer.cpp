@@ -640,6 +640,7 @@ namespace onart {
 	}
 
 	void VkPlayer::destroyPipeline0() {
+		vkDestroyPipelineLayout(device, pipelineLayout0, nullptr);
 		vkDestroyPipeline(device, pipeline0, nullptr);
 	}
 
