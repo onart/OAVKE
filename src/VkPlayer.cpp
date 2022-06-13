@@ -399,12 +399,22 @@ namespace onart {
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 
+		VkSubpassDependency dependency{};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;	// 0번 서브패스가 외부에 대한 의존성이 존재
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 대기할 srcSubpass에서의 작업 유형
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 		VkRenderPassCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		info.attachmentCount = 1;
 		info.pAttachments = &colorAttachment;
 		info.pSubpasses = &subpass;
 		info.subpassCount = 1;
+		info.pDependencies = &dependency;
+		info.dependencyCount = 1;
 		if (vkCreateRenderPass(device, &info, nullptr, &renderPass0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create render pass 0\n");
 			return false;
