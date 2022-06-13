@@ -36,6 +36,9 @@ namespace onart {
 	VkPipeline VkPlayer::pipeline0 = nullptr;
 	VkPipelineLayout VkPlayer::pipelineLayout0 = nullptr;
 
+	VkBuffer VkPlayer::vb = nullptr;
+	VkDeviceMemory VkPlayer::vbmem = nullptr;
+
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
@@ -62,6 +65,7 @@ namespace onart {
 			&& createRenderPasses()
 			&& createFramebuffers()
 			&& createPipelines()
+			&& createFixedVertexBuffer()
 			;
 	}
 
@@ -79,6 +83,7 @@ namespace onart {
 	}
 
 	void VkPlayer::finalize() {
+		destroyFixedVertexBuffer();
 		destroyPipelines();
 		destroyFramebuffers();
 		destroyRenderPasses();
@@ -705,5 +710,59 @@ namespace onart {
 	VkShaderModule VkPlayer::createShaderModule(const char* fileName, shaderc_shader_kind kind) { return createShaderModuleFromSpv(compileShader(fileName, kind)); }
 	VkShaderModule VkPlayer::createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name) { return createShaderModuleFromSpv(compileShader(code, size, kind, name)); }
 
+	static uint32_t findMemorytype(uint32_t typeFilter, VkMemoryPropertyFlags props, VkPhysicalDevice card) {
+		VkPhysicalDeviceMemoryProperties mprops;
+		vkGetPhysicalDeviceMemoryProperties(card, &mprops);
+		for (uint32_t i = 0; i < mprops.memoryTypeCount; i++) {
+			if ((typeFilter & (1 << i)) && ((mprops.memoryTypes[i].propertyFlags & props) == props)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	bool VkPlayer::createFixedVertexBuffer() {
+		Vertex ar[3]{
+			{{-0.5,0.5,0},{1,0,0}},
+			{{0.5,0.5,0},{0,1,0}},
+			{{0,-0.5,0},{0,0,1}}
+		};
+		VkBufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		info.size = sizeof(ar);
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		
+		if (vkCreateBuffer(device, &info, nullptr, &vb) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to create fixed vertex buffer\n");
+			return false;
+		}
+		
+		VkMemoryRequirements mreq;
+		vkGetBufferMemoryRequirements(device, vb, &mreq);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &vbmem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for fixed vb\n");
+			return false;
+		}
+		void* data;
+		if (vkMapMemory(device, vbmem, 0, info.size, 0, &data) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to map to allocated memory\n");
+			return false;
+		}
+		memcpy(data, ar, info.size);
+		vkUnmapMemory(device, vbmem);
+		return true;
+	}
+
+	void VkPlayer::destroyFixedVertexBuffer() {
+		vkFreeMemory(device, vbmem, nullptr);
+		vkDestroyBuffer(device, vb, nullptr);
+	}
 
 }

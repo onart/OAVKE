@@ -48,6 +48,9 @@ namespace onart {
 		static VkPipeline pipeline0;				// 단순 렌더링(변환 - 텍스처,라이팅 하고 끝) 파이프라인
 		static VkPipelineLayout pipelineLayout0;	// 0번의 레이아웃
 
+		static VkBuffer vb;							// 일시적인 고정 정점 버퍼
+		static VkDeviceMemory vbmem;				// vb 메모리 핸들
+
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 	private:	// 함수
@@ -121,6 +124,10 @@ namespace onart {
 		static VkShaderModule createShaderModule(const char* fileName, shaderc_shader_kind kind);
 		// 메모리 상의 변수로부터 GLSL 코드를 읽어 모듈을 생성합니다.
 		static VkShaderModule createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name);
+		// 삼각형 하나를 그리기 위한 정점 버퍼를 생성합니다. 당연하지만 이후 지우고, Mesh 같은 이름의 클래스로 일반화하겠죠.
+		static bool createFixedVertexBuffer();
+		// 삼각형 하나를 그리기 위한 정점 버퍼를 해제합니다.
+		static void destroyFixedVertexBuffer();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
