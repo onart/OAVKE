@@ -24,6 +24,7 @@ namespace onart {
 	VkQueue VkPlayer::graphicsQueue = nullptr, VkPlayer::presentQueue = nullptr;
 	VkCommandPool VkPlayer::commandPool = nullptr;
 	VkCommandBuffer VkPlayer::commandBuffers[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	int VkPlayer::commandBufferNumber = 0;
 	GLFWwindow* VkPlayer::window = nullptr;
 	uint32_t VkPlayer::width = 800, VkPlayer::height = 640;
 	VkExtent2D VkPlayer::swapchainExtent;
@@ -35,7 +36,9 @@ namespace onart {
 	std::vector<VkFramebuffer> VkPlayer::endFramebuffers;
 	VkPipeline VkPlayer::pipeline0 = nullptr;
 	VkPipelineLayout VkPlayer::pipelineLayout0 = nullptr;
-	VkSemaphore VkPlayer::fixedSp = nullptr;
+	VkSemaphore VkPlayer::fixedSp[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	VkSemaphore VkPlayer::presentSp[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	VkFence VkPlayer::bufferFence[VkPlayer::COMMANDBUFFER_COUNT] = {};
 
 	VkBuffer VkPlayer::vb = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr;
@@ -46,6 +49,7 @@ namespace onart {
 	void VkPlayer::start() {
 		if (init()) {
 			mainLoop();
+			vkDeviceWaitIdle(device);
 		}
 		finalize();
 	}
@@ -78,7 +82,8 @@ namespace onart {
 			tp = (float)glfwGetTime();
 			dt = tp - prev;
 			idt = 1.0f / dt;
-			if ((frame & 15) == 0) printf("%f\r",idt);
+			//if ((frame & 15) == 0) printf("%f\r",idt);
+			if ((frame & 1023) == 0) printf("%f\r", frame / glfwGetTime());
 			prev = tp;
 			// loop body
 			fixedDraw();
@@ -218,7 +223,8 @@ namespace onart {
 		VkCommandPoolCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		info.queueFamilyIndex = physicalDevice.graphicsFamily;
-
+		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		
 		if (vkCreateCommandPool(device, &info, nullptr, &commandPool) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create graphics/transfer command pool\n");
 			return false;
@@ -228,6 +234,7 @@ namespace onart {
 		bufferInfo.commandPool = commandPool;
 		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		bufferInfo.commandBufferCount = COMMANDBUFFER_COUNT;
+		
 		if (vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create graphics/transfer command buffers\n");
 			return false;
@@ -290,6 +297,7 @@ namespace onart {
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice.card, surface, &count, formats.data());
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.card, surface, &count, nullptr);
 		std::vector<VkPresentModeKHR> modes(count);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.card, surface, &count, modes.data());
 
 		VkSurfaceFormatKHR sf = formats[0];
 		for (VkSurfaceFormatKHR& form : formats) {
@@ -772,16 +780,18 @@ namespace onart {
 
 	void VkPlayer::fixedDraw() {
 		uint32_t imgIndex;
-		if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, fixedSp, nullptr, &imgIndex) != VK_SUCCESS) {
+		if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, fixedSp[commandBufferNumber], nullptr, &imgIndex) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 1\n");
 			return;
 		}
-		vkResetCommandPool(device, commandPool, 0);
-		
+		vkWaitForFences(device, 1, &bufferFence[commandBufferNumber], VK_FALSE, UINT64_MAX);
+		vkResetFences(device, 1, &bufferFence[commandBufferNumber]);
+		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
+
 		VkCommandBufferBeginInfo buffbegin{};
 		buffbegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		buffbegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (vkBeginCommandBuffer(commandBuffers[0], &buffbegin) != VK_SUCCESS) {
+		if (vkBeginCommandBuffer(commandBuffers[commandBufferNumber], &buffbegin) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 2\n");
 			return;
 		}
@@ -791,17 +801,17 @@ namespace onart {
 		rpbegin.renderPass = renderPass0;
 		rpbegin.framebuffer = endFramebuffers[imgIndex];
 		rpbegin.renderArea.offset = { 0,0 };
-		rpbegin.renderArea.extent = swapchainExtent;
+		rpbegin.renderArea.extent = { swapchainExtent.width, swapchainExtent.height };
 		VkClearValue clearColor = { 0.03f,0.03f,0.03f,1.0f };
 		rpbegin.clearValueCount = 1;
 		rpbegin.pClearValues = &clearColor;
-		vkCmdBeginRenderPass(commandBuffers[0], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
+		vkCmdBeginRenderPass(commandBuffers[commandBufferNumber], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
 		const VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[0], 0, 1, &vb, offsets);
-		vkCmdDraw(commandBuffers[0], 3, 1, 0, 0);
-		vkCmdEndRenderPass(commandBuffers[0]);
-		if (vkEndCommandBuffer(commandBuffers[0]) != VK_SUCCESS) {
+		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
+		vkCmdDraw(commandBuffers[commandBufferNumber], 3, 1, 0, 0);
+		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
+		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 3\n");
 			return;
 		}
@@ -809,39 +819,61 @@ namespace onart {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffers[0];
+		submitInfo.pCommandBuffers = &commandBuffers[commandBufferNumber];
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &fixedSp;
+		submitInfo.pWaitSemaphores = &fixedSp[commandBufferNumber];
 		submitInfo.pWaitDstStageMask = waitStages;
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &presentSp[commandBufferNumber];
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, bufferFence[commandBufferNumber]) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 4\n");
 			return;
 		}
-		vkQueueWaitIdle(graphicsQueue);
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.swapchainCount = 1;
 		presentInfo.pImageIndices = &imgIndex;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &presentSp[commandBufferNumber];
 		
 		if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 5\n");
 			return;
 		}
-		vkQueueWaitIdle(presentQueue);
+		commandBufferNumber = (commandBufferNumber + 1) % COMMANDBUFFER_COUNT;
 	}
 
 	bool VkPlayer::createSemaphore() {
 		VkSemaphoreCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		if (vkCreateSemaphore(device, &info, nullptr, &fixedSp) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to create semaphore\n");
-			return false;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			if (vkCreateSemaphore(device, &info, nullptr, &fixedSp[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to create semaphore\n");
+				return false;
+			}
+			if (vkCreateSemaphore(device, &info, nullptr, &presentSp[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to create semaphore\n");
+				return false;
+			}
+			if (vkCreateFence(device, &fenceInfo, nullptr, &bufferFence[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to create fence\n");
+				return false;
+			}
 		}
 		return true;
 	}
 
 	void VkPlayer::destroySemaphore() {
-		vkDestroySemaphore(device, fixedSp, nullptr);
+		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			vkDestroySemaphore(device, fixedSp[i], nullptr);
+			vkDestroySemaphore(device, presentSp[i], nullptr);
+			vkDestroyFence(device, bufferFence[i], nullptr);
+		}
 	}
 }

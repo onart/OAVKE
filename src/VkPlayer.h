@@ -36,6 +36,7 @@ namespace onart {
 		static VkQueue graphicsQueue, presentQueue;	// 큐
 		static VkCommandPool commandPool;			// 명령풀
 		static VkCommandBuffer commandBuffers[];	// 명령 버퍼
+		static int commandBufferNumber;				// 지금 쓸 명령 버퍼 번호
 		static GLFWwindow* window;					// 응용 창
 		static uint32_t width, height;				// 창 크기
 		static VkSurfaceKHR surface;				// 창 표면
@@ -47,7 +48,8 @@ namespace onart {
 		static std::vector<VkFramebuffer> endFramebuffers;	// 스왑체인 이미지를 참조하는 프레임버퍼
 		static VkPipeline pipeline0;				// 단순 렌더링(변환 - 텍스처,라이팅 하고 끝) 파이프라인
 		static VkPipelineLayout pipelineLayout0;	// 0번의 레이아웃
-		static VkSemaphore fixedSp;					// 고정 세마포어
+		static VkSemaphore fixedSp[], presentSp[];	// 고정 세마포어
+		static VkFence bufferFence[];				// 버퍼 펜스
 
 		static VkBuffer vb;							// 일시적인 고정 정점 버퍼
 		static VkDeviceMemory vbmem;				// vb 메모리 핸들
