@@ -51,6 +51,13 @@ namespace onart {
 		static VkSemaphore fixedSp[], presentSp[];	// 고정 세마포어
 		static VkFence bufferFence[];				// 버퍼 펜스
 
+		static VkBuffer ub[];						// 공유 버퍼
+		static VkDeviceMemory ubmem[];				// 공유 버퍼 메모리 핸들
+		static void* ubmap[];						// 공유 버퍼 메모리 맵 공유 지점
+		static VkDescriptorSetLayout ubds;			// 
+		static VkDescriptorPool ubpool;				// 디스크립터 풀
+		static VkDescriptorSet ubset[];				// 디스크립터 집합
+
 		static VkBuffer vb;							// 일시적인 고정 정점 버퍼
 		static VkDeviceMemory vbmem;				// vb 메모리 핸들
 
@@ -137,6 +144,14 @@ namespace onart {
 		static bool createSemaphore();
 		// 만든 세마포어를 해제합니다.
 		static void destroySemaphore();
+		// 공유 버퍼를 생성합니다.
+		static bool createUniformBuffer();
+		// 공유 버퍼를 해제합니다.
+		static void destroyUniformBuffer();
+		// 디스크립터 집합을 생성합니다.
+		static bool createDescriptorSet();
+		// 디스크립터 집합을 해제합니다.
+		static void destroyDescriptorSet();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

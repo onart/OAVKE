@@ -40,6 +40,13 @@ namespace onart {
 	VkSemaphore VkPlayer::presentSp[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	VkFence VkPlayer::bufferFence[VkPlayer::COMMANDBUFFER_COUNT] = {};
 
+	VkBuffer VkPlayer::ub[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	VkDeviceMemory VkPlayer::ubmem[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	void* VkPlayer::ubmap[VkPlayer::COMMANDBUFFER_COUNT] = {};
+	VkDescriptorSetLayout VkPlayer::ubds = nullptr;
+	VkDescriptorPool VkPlayer::ubpool = nullptr;
+	VkDescriptorSet VkPlayer::ubset[VkPlayer::COMMANDBUFFER_COUNT] = {};
+
 	VkBuffer VkPlayer::vb = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr;
 
@@ -69,6 +76,8 @@ namespace onart {
 			&& createSwapchainImageViews()
 			&& createRenderPasses()
 			&& createFramebuffers()
+			&& createUniformBuffer()
+			&& createDescriptorSet()
 			&& createPipelines()
 			&& createFixedVertexBuffer()
 			&& createSemaphore()
@@ -94,6 +103,8 @@ namespace onart {
 		destroySemaphore();
 		destroyFixedVertexBuffer();
 		destroyPipelines();
+		destroyDescriptorSet();
+		destroyUniformBuffer();
 		destroyFramebuffers();
 		destroyRenderPasses();
 		destroySwapchainImageViews();
@@ -619,8 +630,8 @@ namespace onart {
 		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pSetLayouts = nullptr;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &ubds;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = nullptr;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout0);
@@ -769,7 +780,10 @@ namespace onart {
 		}
 		memcpy(data, ar, info.size);
 		vkUnmapMemory(device, vbmem);
-		vkBindBufferMemory(device, vb, vbmem, 0);
+		if (vkBindBufferMemory(device, vb, vbmem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
 		return true;
 	}
 
@@ -784,10 +798,19 @@ namespace onart {
 			fprintf(stderr, "Fail 1\n");
 			return;
 		}
+		float PI = 3.14159265358979;
+		float st = sinf(tp), ct = cosf(tp);
+		float rotation[16] = {
+			(ct * swapchainExtent.height) / swapchainExtent.width,-(st * swapchainExtent.height) / swapchainExtent.width,0,0,
+			st,ct,0,0,
+			0,0,1,0,
+			0,0,0,1
+		};
+		memcpy(ubmap[commandBufferNumber], rotation, sizeof(rotation));
+
 		vkWaitForFences(device, 1, &bufferFence[commandBufferNumber], VK_FALSE, UINT64_MAX);
 		vkResetFences(device, 1, &bufferFence[commandBufferNumber]);
 		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
-
 		VkCommandBufferBeginInfo buffbegin{};
 		buffbegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		buffbegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -809,6 +832,7 @@ namespace onart {
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
 		const VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
+		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 1, &ubset[commandBufferNumber], 0, nullptr);
 		vkCmdDraw(commandBuffers[commandBufferNumber], 3, 1, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
 		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
@@ -876,4 +900,117 @@ namespace onart {
 			vkDestroyFence(device, bufferFence[i], nullptr);
 		}
 	}
+
+	bool VkPlayer::createUniformBuffer() {
+		VkBufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		info.size = sizeof(float) * 16;
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			if (vkCreateBuffer(device, &info, nullptr, &ub[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to create fixed uniform buffer\n");
+				return false;
+			}
+		}
+
+		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			VkMemoryRequirements mreq;
+			vkGetBufferMemoryRequirements(device, ub[i], &mreq);
+			VkMemoryAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.allocationSize = mreq.size;
+			allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
+			if (vkAllocateMemory(device, &allocInfo, nullptr, &ubmem[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to allocate memory for fixed ub\n");
+				return false;
+			}
+			if (vkMapMemory(device, ubmem[i], 0, info.size, 0, &ubmap[i]) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to map to allocated memory\n");
+				return false;
+			}
+			if (vkBindBufferMemory(device, ub[i], ubmem[i], 0) != VK_SUCCESS) {
+				fprintf(stderr, "Failed to bind ub and memory\n");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyUniformBuffer() {
+		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			vkFreeMemory(device, ubmem[i], nullptr);
+			vkDestroyBuffer(device, ub[i], nullptr);
+		}
+	}
+
+	bool VkPlayer::createDescriptorSet() {
+		VkDescriptorSetLayoutBinding uboBinding{};
+		uboBinding.binding = 0;
+		uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboBinding.descriptorCount = 1;
+		uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;	// VK_SHADER_STAGE_ALL_GRAPHICS
+
+		VkDescriptorSetLayoutCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		info.bindingCount = 1;
+		info.pBindings = &uboBinding;
+		
+		if (vkCreateDescriptorSetLayout(device, &info, nullptr, &ubds) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to create descriptor set layout for uniform buffer\n");
+			return false;
+		}
+		
+		VkDescriptorPoolSize size{};
+		size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		size.descriptorCount = COMMANDBUFFER_COUNT;
+
+		VkDescriptorPoolCreateInfo dpinfo{};
+		dpinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		dpinfo.poolSizeCount = 1;
+		dpinfo.pPoolSizes = &size;
+		dpinfo.maxSets = COMMANDBUFFER_COUNT;
+		
+		if (vkCreateDescriptorPool(device, &dpinfo, nullptr, &ubpool) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to create descriptor pool\n");
+			return false;
+		}
+		
+		std::vector<VkDescriptorSetLayout> layouts(COMMANDBUFFER_COUNT, ubds);
+		VkDescriptorSetAllocateInfo setInfo{};
+		setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		setInfo.descriptorPool = ubpool;
+		setInfo.descriptorSetCount = COMMANDBUFFER_COUNT;
+		setInfo.pSetLayouts = layouts.data();
+		
+		if (vkAllocateDescriptorSets(device, &setInfo, ubset) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to allocate descriptor set\n");
+			return false;
+		}
+
+		for (size_t i = 0; i < COMMANDBUFFER_COUNT; i++) {
+			VkDescriptorBufferInfo bufferInfo{};
+			bufferInfo.buffer = ub[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(float) * 16;
+			
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = ubset[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		}
+
+		return true;
+	}
+
+	void VkPlayer::destroyDescriptorSet() {
+		vkDestroyDescriptorPool(device, ubpool, nullptr);
+		vkDestroyDescriptorSetLayout(device, ubds, nullptr);
+	}	
 }
