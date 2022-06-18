@@ -804,11 +804,11 @@ namespace onart {
 		vkResetFences(device, 1, &bufferFence[commandBufferNumber]);
 		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
 
-		float PI = 3.14159265358979;
 		float st = sinf(tp), ct = cosf(tp);
+		float asp = (float)swapchainExtent.height / swapchainExtent.width;
 		float rotation[16] = {
-			(ct * swapchainExtent.height) / swapchainExtent.width,-(st * swapchainExtent.height) / swapchainExtent.width,0,0,
-			st,ct,0,0,
+			ct*asp,st,0,0,
+			-st*asp,ct,0,0,
 			0,0,1,0,
 			0,0,0,1
 		};
