@@ -6,7 +6,7 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 fragColor;
 
-layout(binding = 0) uniform UBO{mat4 rotation;} ubo;
+layout(std140, binding = 0) uniform UBO{mat4 rotation;} ubo;
 
 void main() {
     gl_Position = ubo.rotation*vec4(inPosition, 1.0);

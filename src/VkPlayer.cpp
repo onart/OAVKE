@@ -506,6 +506,27 @@ namespace onart {
 		float color[3];
 	};
 
+	template <class T, unsigned D>	// 임시
+	struct UBentry {
+		alignas(sizeof(T)* (D <= 2 ? 2 : 4)) T entry[D];
+		T& operator[](size_t p) { return entry[p]; }
+	};
+	template <class T>
+	struct UBentry<T, 1> {
+		alignas(sizeof(T)) T value;
+		T& operator=(T v) { return value = v; }
+	};
+	using UBfloat = UBentry<float, 1>;
+	using UBint = UBentry<int, 1>;
+	using UBbool = UBentry<int, 1>;
+	using UBvec2 = UBentry<float, 2>;
+	using UBvec3 = UBentry<float, 3>;
+	using UBvec4 = UBentry<float, 4>;
+	using UBivec2 = UBentry<int, 2>;
+	using UBivec3 = UBentry<int, 3>;
+	using UBivec4 = UBentry<int, 4>;
+	using UBmat4 = UBentry<float, 16>;
+
 	bool VkPlayer::createPipeline0() {
 		// programmable function: 세이더 종류는 수십 가지쯤 돼 보이므로, 오버로드로 수용할 것
 		VkShaderModule vertModule = createShaderModule("tri.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
