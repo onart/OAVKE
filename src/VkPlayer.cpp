@@ -158,6 +158,7 @@ namespace onart {
 		VkPhysicalDeviceFeatures features;
 		for (uint32_t i = 0; i < count; i++) {
 			vkGetPhysicalDeviceProperties(cards[i], &properties);
+			// printf("maximum %d buffers\n",properties.limits.maxMemoryAllocationCount);
 			vkGetPhysicalDeviceFeatures(cards[i], &features);
 			if (!checkDeviceExtension(cards[i])) continue;
 			PhysicalDevice pd = setQueueFamily(cards[i]);
@@ -798,6 +799,11 @@ namespace onart {
 			fprintf(stderr, "Fail 1\n");
 			return;
 		}
+
+		vkWaitForFences(device, 1, &bufferFence[commandBufferNumber], VK_FALSE, UINT64_MAX);
+		vkResetFences(device, 1, &bufferFence[commandBufferNumber]);
+		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
+
 		float PI = 3.14159265358979;
 		float st = sinf(tp), ct = cosf(tp);
 		float rotation[16] = {
@@ -808,9 +814,6 @@ namespace onart {
 		};
 		memcpy(ubmap[commandBufferNumber], rotation, sizeof(rotation));
 
-		vkWaitForFences(device, 1, &bufferFence[commandBufferNumber], VK_FALSE, UINT64_MAX);
-		vkResetFences(device, 1, &bufferFence[commandBufferNumber]);
-		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
 		VkCommandBufferBeginInfo buffbegin{};
 		buffbegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		buffbegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -941,6 +944,7 @@ namespace onart {
 	void VkPlayer::destroyUniformBuffer() {
 		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
 			vkFreeMemory(device, ubmem[i], nullptr);
+			ubmap[i] = nullptr;
 			vkDestroyBuffer(device, ub[i], nullptr);
 		}
 	}
