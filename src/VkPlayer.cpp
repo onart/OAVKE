@@ -767,17 +767,20 @@ namespace onart {
 	}
 
 	bool VkPlayer::createFixedVertexBuffer() {
-		Vertex ar[3]{
+		Vertex ar[]{
 			{{-0.5,0.5,0},{1,0,0}},
 			{{0.5,0.5,0},{0,1,0}},
-			{{0,-0.5,0},{0,0,1}}
+			{{0,-0.5,0},{0,0,1}},
 		};
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		info.size = sizeof(ar);
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		
+		VkBuffer vb;
+		VkDeviceMemory vbmem;
+
 		if (vkCreateBuffer(device, &info, nullptr, &vb) != VK_SUCCESS) {
 			fprintf(stderr,"Failed to create fixed vertex buffer\n");
 			return false;
@@ -806,6 +809,61 @@ namespace onart {
 			fprintf(stderr, "Failed to bind buffer object and memory\n");
 			return false;
 		}
+
+		info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		if (vkCreateBuffer(device, &info, nullptr, &VkPlayer::vb) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create fixed vertex buffer\n");
+			return false;
+		}
+		vkGetBufferMemoryRequirements(device, vb, &mreq);
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &VkPlayer::vbmem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for fixed vb\n");
+			return false;
+		}
+		if (vkBindBufferMemory(device, VkPlayer::vb, VkPlayer::vbmem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
+
+		VkCommandBufferAllocateInfo cmdInfo{};
+		cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmdInfo.commandBufferCount = 1;
+		cmdInfo.commandPool = commandPool;
+
+		VkCommandBuffer copyBuffer;
+		if (vkAllocateCommandBuffers(device, &cmdInfo, &copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr,"Failed to allocate command buffer for copying vertex buffer\n");
+			return false;
+		}
+		VkCommandBufferBeginInfo copyBegin{};
+		copyBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		copyBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(copyBuffer, &copyBegin) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to begin command buffer for copying vertex buffer\n");
+			return false;
+		}
+		VkBufferCopy copyRegion{};
+		copyRegion.size = sizeof(ar); // 오프셋 설정 가능
+		vkCmdCopyBuffer(copyBuffer, vb, VkPlayer::vb, 1, &copyRegion);
+		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to end command buffer for copying vertex buffer\n");
+			return false;
+		}
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &copyBuffer;
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to submit command buffer for copying vertex buffer\n");
+			return false;
+		}
+		vkQueueWaitIdle(graphicsQueue);
+		vkFreeCommandBuffers(device, commandPool, 1, &copyBuffer);
+		vkDestroyBuffer(device, vb, nullptr);
+		vkFreeMemory(device, vbmem, nullptr);
 		return true;
 	}
 
