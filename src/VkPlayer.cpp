@@ -47,8 +47,8 @@ namespace onart {
 	VkDescriptorPool VkPlayer::ubpool = nullptr;
 	VkDescriptorSet VkPlayer::ubset[VkPlayer::COMMANDBUFFER_COUNT] = {};
 
-	VkBuffer VkPlayer::vb = nullptr;
-	VkDeviceMemory VkPlayer::vbmem = nullptr;
+	VkBuffer VkPlayer::vb = nullptr, VkPlayer::ib = nullptr;
+	VkDeviceMemory VkPlayer::vbmem = nullptr, VkPlayer::ibmem = nullptr;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -80,6 +80,7 @@ namespace onart {
 			&& createDescriptorSet()
 			&& createPipelines()
 			&& createFixedVertexBuffer()
+			&& createFixedIndexBuffer()
 			&& createSemaphore()
 			;
 	}
@@ -101,6 +102,7 @@ namespace onart {
 
 	void VkPlayer::finalize() {
 		destroySemaphore();
+		destroyFixedIndexBuffer();
 		destroyFixedVertexBuffer();
 		destroyPipelines();
 		destroyDescriptorSet();
@@ -313,7 +315,7 @@ namespace onart {
 
 		VkSurfaceFormatKHR sf = formats[0];
 		for (VkSurfaceFormatKHR& form : formats) {
-			if (form.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && form.format == VK_FORMAT_B8G8R8A8_SRGB) sf = form;
+			if (form.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR && form.format == VK_FORMAT_B8G8R8A8_SRGB) { sf = form; }
 		}
 
 		uint32_t idx[2] = { physicalDevice.graphicsFamily,physicalDevice.presentFamily };
@@ -768,9 +770,10 @@ namespace onart {
 
 	bool VkPlayer::createFixedVertexBuffer() {
 		Vertex ar[]{
-			{{-0.5,0.5,0},{1,0,0}},
-			{{0.5,0.5,0},{0,1,0}},
-			{{0,-0.5,0},{0,0,1}},
+			{{-0.5,0.5,0},{1,0,0}}, // 좌하: 기본 적색
+			{{0.5,0.5,0},{0,1,0}},  // 우하: 기본 녹색
+			{{0.5,-0.5,0},{0,0,1}}, // 우상: 기본 청색
+			{{-0.5,-0.5,0},{1,1,1}} // 좌상: 기본 백색
 		};
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -815,7 +818,7 @@ namespace onart {
 			fprintf(stderr, "Failed to create fixed vertex buffer\n");
 			return false;
 		}
-		vkGetBufferMemoryRequirements(device, vb, &mreq);
+		vkGetBufferMemoryRequirements(device, VkPlayer::vb, &mreq);
 		allocInfo.allocationSize = mreq.size;
 		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
 		if (vkAllocateMemory(device, &allocInfo, nullptr, &VkPlayer::vbmem) != VK_SUCCESS) {
@@ -914,8 +917,9 @@ namespace onart {
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
 		const VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 1, &ubset[commandBufferNumber], 0, nullptr);
-		vkCmdDraw(commandBuffers[commandBufferNumber], 3, 1, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
 		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 3\n");
@@ -1095,5 +1099,108 @@ namespace onart {
 	void VkPlayer::destroyDescriptorSet() {
 		vkDestroyDescriptorPool(device, ubpool, nullptr);
 		vkDestroyDescriptorSetLayout(device, ubds, nullptr);
-	}	
+	}
+
+	bool VkPlayer::createFixedIndexBuffer() {
+		uint16_t ar[] = { 0,1,2,0,2,3 };
+		
+		VkBufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		info.size = sizeof(ar);
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VkBuffer ib;
+		VkDeviceMemory ibmem;
+
+		if (vkCreateBuffer(device, &info, nullptr, &ib) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create fixed index buffer\n");
+			return false;
+		}
+
+		VkMemoryRequirements mreq;
+		vkGetBufferMemoryRequirements(device, ib, &mreq);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &ibmem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for fixed ib\n");
+			return false;
+		}
+		void* data;
+		if (vkMapMemory(device, ibmem, 0, info.size, 0, &data) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to map to allocated memory\n");
+			return false;
+		}
+		memcpy(data, ar, info.size);
+		vkUnmapMemory(device, ibmem);
+		if (vkBindBufferMemory(device, ib, ibmem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
+
+		info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		if (vkCreateBuffer(device, &info, nullptr, &VkPlayer::ib) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create fixed index buffer\n");
+			return false;
+		}
+		vkGetBufferMemoryRequirements(device, VkPlayer::ib, &mreq);
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &VkPlayer::ibmem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for fixed ib\n");
+			return false;
+		}
+		if (vkBindBufferMemory(device, VkPlayer::ib, VkPlayer::ibmem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
+
+		VkCommandBufferAllocateInfo cmdInfo{};
+		cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmdInfo.commandBufferCount = 1;
+		cmdInfo.commandPool = commandPool;
+
+		VkCommandBuffer copyBuffer;
+		if (vkAllocateCommandBuffers(device, &cmdInfo, &copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate command buffer for copying index buffer\n");
+			return false;
+		}
+		VkCommandBufferBeginInfo copyBegin{};
+		copyBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		copyBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(copyBuffer, &copyBegin) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to begin command buffer for copying index buffer\n");
+			return false;
+		}
+		VkBufferCopy copyRegion{};
+		copyRegion.size = sizeof(ar); // 오프셋 설정 가능
+		vkCmdCopyBuffer(copyBuffer, ib, VkPlayer::ib, 1, &copyRegion);
+		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to end command buffer for copying index buffer\n");
+			return false;
+		}
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &copyBuffer;
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to submit command buffer for copying index buffer\n");
+			return false;
+		}
+		vkQueueWaitIdle(graphicsQueue);
+		vkFreeCommandBuffers(device, commandPool, 1, &copyBuffer);
+		vkDestroyBuffer(device, ib, nullptr);
+		vkFreeMemory(device, ibmem, nullptr);
+		return true;
+	}
+
+	void VkPlayer::destroyFixedIndexBuffer() {
+		vkFreeMemory(device, ibmem, nullptr);
+		vkDestroyBuffer(device, ib, nullptr);
+	}
 }

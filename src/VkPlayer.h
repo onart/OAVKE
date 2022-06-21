@@ -58,8 +58,8 @@ namespace onart {
 		static VkDescriptorPool ubpool;				// 디스크립터 풀
 		static VkDescriptorSet ubset[];				// 디스크립터 집합
 
-		static VkBuffer vb;							// 일시적인 고정 정점 버퍼
-		static VkDeviceMemory vbmem;				// vb 메모리 핸들
+		static VkBuffer vb, ib;						// 일시적인 고정 정점 버퍼
+		static VkDeviceMemory vbmem, ibmem;			// vb 메모리 핸들
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -134,9 +134,9 @@ namespace onart {
 		static VkShaderModule createShaderModule(const char* fileName, shaderc_shader_kind kind);
 		// 메모리 상의 변수로부터 GLSL 코드를 읽어 모듈을 생성합니다.
 		static VkShaderModule createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name);
-		// 삼각형 하나를 그리기 위한 정점 버퍼를 생성합니다. 당연하지만 이후 지우고, Mesh 같은 이름의 클래스로 일반화하겠죠.
+		// 삼각형 2개를 그리기 위한 정점 버퍼를 생성합니다. 당연하지만 이후 지우고, Mesh 같은 이름의 클래스로 일반화하겠죠.
 		static bool createFixedVertexBuffer();
-		// 삼각형 하나를 그리기 위한 정점 버퍼를 해제합니다.
+		// 삼각형 2개를 그리기 위한 정점 버퍼를 해제합니다.
 		static void destroyFixedVertexBuffer();
 		// 고정 정점을 가지고 한 번 그려 봅니다.
 		static void fixedDraw();
@@ -152,6 +152,10 @@ namespace onart {
 		static bool createDescriptorSet();
 		// 디스크립터 집합을 해제합니다.
 		static void destroyDescriptorSet();
+		// 직사각형 하나를 그리기 위한 고정 인덱스 버퍼를 생성합니다.
+		static bool createFixedIndexBuffer();
+		// 직사각형 하나를 그리기 위한 고정 인덱스 버퍼를 해제합니다.
+		static void destroyFixedIndexBuffer();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
