@@ -40,6 +40,11 @@ namespace onart {
 	VkSemaphore VkPlayer::presentSp[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	VkFence VkPlayer::bufferFence[VkPlayer::COMMANDBUFFER_COUNT] = {};
 
+	VkImage VkPlayer::dsImage = nullptr;
+	VkImageView VkPlayer::dsImageView = nullptr;
+	VkDeviceMemory VkPlayer::dsmem = nullptr;
+
+
 	VkBuffer VkPlayer::ub[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	VkDeviceMemory VkPlayer::ubmem[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	void* VkPlayer::ubmap[VkPlayer::COMMANDBUFFER_COUNT] = {};
@@ -74,6 +79,7 @@ namespace onart {
 			&& createCommandPool()
 			&& createSwapchain()
 			&& createSwapchainImageViews()
+			&& createDSBuffer()
 			&& createRenderPasses()
 			&& createFramebuffers()
 			&& createUniformBuffer()
@@ -109,6 +115,7 @@ namespace onart {
 		destroyUniformBuffer();
 		destroyFramebuffers();
 		destroyRenderPasses();
+		destroyDSBuffer();
 		destroySwapchainImageViews();
 		destroySwapchain();
 		destroyCommandPool();
@@ -1202,5 +1209,87 @@ namespace onart {
 	void VkPlayer::destroyFixedIndexBuffer() {
 		vkFreeMemory(device, ibmem, nullptr);
 		vkDestroyBuffer(device, ib, nullptr);
+	}
+
+	static VkFormat findSupportedFormat(VkPhysicalDevice device, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+		for (VkFormat format : candidates) {
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(device, VK_FORMAT_D32_SFLOAT, &props);
+			if ((tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) ||
+				(tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)) return format;
+		}
+		return candidates[0];
+	}
+
+	bool VkPlayer::createDSBuffer() {
+		VkFormat imgFormat = VK_FORMAT_D32_SFLOAT;
+		VkImageTiling imgTiling = VK_IMAGE_TILING_LINEAR;
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(physicalDevice.card, VK_FORMAT_D24_UNORM_S8_UINT, &props);
+		if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+			imgFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+			imgTiling = VK_IMAGE_TILING_OPTIMAL;
+		}
+		else if (props.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+			imgFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+			imgTiling = VK_IMAGE_TILING_LINEAR;
+		}
+
+		VkImageCreateInfo imgInfo{};
+		imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imgInfo.extent.width = swapchainExtent.width;
+		imgInfo.extent.height = swapchainExtent.height;
+		imgInfo.extent.depth = 1;
+		imgInfo.imageType = VK_IMAGE_TYPE_2D;
+		imgInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		imgInfo.mipLevels = 1;
+		imgInfo.arrayLayers = 1;
+		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imgInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		imgInfo.format = imgFormat;
+		imgInfo.tiling = imgTiling;
+		if (vkCreateImage(device, &imgInfo, nullptr, &dsImage) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create depth/stencil buffer image\n");
+			return false;
+		}
+		
+		VkMemoryRequirements mreq;
+		vkGetImageMemoryRequirements(device, dsImage, &mreq);
+		VkMemoryAllocateInfo memInfo{};
+		memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		memInfo.allocationSize = mreq.size;
+		memInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+		if (vkAllocateMemory(device, &memInfo, nullptr, &dsmem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate depth/stencil buffer image memory\n");
+			return false;
+		}
+		if (vkBindImageMemory(device, dsImage, dsmem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind depth/stencil buffer image - memory\n");
+			return false;
+		}
+		VkImageViewCreateInfo viewInfo{};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = dsImage;
+		viewInfo.format = imgInfo.format;
+		viewInfo.components.r = viewInfo.components.g = viewInfo.components.b = viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+		if (vkCreateImageView(device, &viewInfo, nullptr, &dsImageView) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create depth/stencil buffer image view\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyDSBuffer() {
+		vkDestroyImageView(device, dsImageView, nullptr);
+		vkFreeMemory(device, dsmem, nullptr);
+		vkDestroyImage(device, dsImage, nullptr);
 	}
 }

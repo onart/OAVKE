@@ -50,6 +50,9 @@ namespace onart {
 		static VkPipelineLayout pipelineLayout0;	// 0번의 레이아웃
 		static VkSemaphore fixedSp[], presentSp[];	// 고정 세마포어
 		static VkFence bufferFence[];				// 버퍼 펜스
+		static VkImage dsImage;						// 깊이/스텐실 이미지
+		static VkImageView dsImageView;				// dsImage의 뷰
+		static VkDeviceMemory dsmem;				// dsImage를 위한 메모리
 
 		static VkBuffer ub[];						// 공유 버퍼
 		static VkDeviceMemory ubmem[];				// 공유 버퍼 메모리 핸들
@@ -156,6 +159,10 @@ namespace onart {
 		static bool createFixedIndexBuffer();
 		// 직사각형 하나를 그리기 위한 고정 인덱스 버퍼를 해제합니다.
 		static void destroyFixedIndexBuffer();
+		// 깊이/스텐실 버퍼를 위한 이미지와 이미지 뷰를 생성합니다.
+		static bool createDSBuffer();
+		// 깊이/스텐실 버퍼를 위한 이미지와 이미지 뷰를 해제합니다.
+		static void destroyDSBuffer();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
