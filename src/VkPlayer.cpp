@@ -438,7 +438,7 @@ namespace onart {
 		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -650,6 +650,14 @@ namespace onart {
 		depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
 		depthStencilInfo.depthTestEnable = VK_TRUE;
 		depthStencilInfo.depthWriteEnable = VK_TRUE;
+		depthStencilInfo.stencilTestEnable = VK_TRUE;
+		depthStencilInfo.front.compareMask = 0xff;
+		depthStencilInfo.front.compareOp = VkCompareOp::VK_COMPARE_OP_EQUAL;
+		depthStencilInfo.front.writeMask = 0xff;
+		depthStencilInfo.front.failOp = VkStencilOp::VK_STENCIL_OP_KEEP;
+		depthStencilInfo.front.depthFailOp = VkStencilOp::VK_STENCIL_OP_KEEP;
+		depthStencilInfo.front.passOp = VkStencilOp::VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+		depthStencilInfo.front.reference = 0x00;
 		
 		// fixed function: 색 블렌딩
 		// 블렌딩은 대체로 SRC_ALPHA, 1-SRC_ALPHA로 하니 반투명이 없을 거라면 성능을 위해 끄는 정도?
@@ -799,10 +807,10 @@ namespace onart {
 
 	bool VkPlayer::createFixedVertexBuffer() {
 		Vertex ar[]{
-			{{-0.5,0.5,0},{1,0,0}}, // 좌하: 기본 적색
-			{{0.5,0.5,0},{0,1,0}},  // 우하: 기본 녹색
-			{{0.5,-0.5,0},{0,0,1}}, // 우상: 기본 청색
-			{{-0.5,-0.5,0},{1,1,1}}, // 좌상: 기본 백색
+			{{-0.5,0.5,0.99},{1,0,0}}, // 좌하: 기본 적색
+			{{0.5,0.5,0.99},{0,1,0}},  // 우하: 기본 녹색
+			{{0.5,-0.5,0.99},{0,0,1}}, // 우상: 기본 청색
+			{{-0.5,-0.5,0.99},{1,1,1}}, // 좌상: 기본 백색
 
 			{{-1,1,0.9},{1,1,1}},
 			{{1,1,0.9},{1,1,1}},
