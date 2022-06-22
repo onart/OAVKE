@@ -53,6 +53,7 @@ namespace onart {
 		static VkImage dsImage;						// 깊이/스텐실 이미지
 		static VkImageView dsImageView;				// dsImage의 뷰
 		static VkDeviceMemory dsmem;				// dsImage를 위한 메모리
+		static VkFormat dsImageFormat;
 
 		static VkBuffer ub[];						// 공유 버퍼
 		static VkDeviceMemory ubmem[];				// 공유 버퍼 메모리 핸들

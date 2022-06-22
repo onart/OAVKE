@@ -43,6 +43,7 @@ namespace onart {
 	VkImage VkPlayer::dsImage = nullptr;
 	VkImageView VkPlayer::dsImageView = nullptr;
 	VkDeviceMemory VkPlayer::dsmem = nullptr;
+	VkFormat VkPlayer::dsImageFormat;
 
 
 	VkBuffer VkPlayer::ub[VkPlayer::COMMANDBUFFER_COUNT] = {};
@@ -421,7 +422,9 @@ namespace onart {
 	}
 
 	bool VkPlayer::createRenderPass0() {
-		VkAttachmentDescription colorAttachment{};	// 실제 첨부물이 아님. 실제 첨부물을 읽을 방식을 정의
+		VkAttachmentDescription attachments[2]{};
+		VkAttachmentDescription& colorAttachment = attachments[0];
+		VkAttachmentDescription& depthAttachment = attachments[1];
 		colorAttachment.format = swapchainImageFormat;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -431,14 +434,28 @@ namespace onart {
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+		depthAttachment.format = dsImageFormat;
+		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 		VkAttachmentReference colorAttachmentRef{};	// 서브패스가 볼 번호와 레이아웃 정의
 		colorAttachmentRef.attachment = 0;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference depthAttachmentRef{};
+		depthAttachmentRef.attachment = 1;
+		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass{};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
+		subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
 		VkSubpassDependency dependency{};
 		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -450,8 +467,8 @@ namespace onart {
 
 		VkRenderPassCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		info.attachmentCount = 1;
-		info.pAttachments = &colorAttachment;
+		info.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
+		info.pAttachments = attachments;
 		info.pSubpasses = &subpass;
 		info.subpassCount = 1;
 		info.pDependencies = &dependency;
@@ -480,8 +497,9 @@ namespace onart {
 		info.layers = 1;
 		info.renderPass = renderPass0;
 
+		VkImageView attachments[] = { nullptr,dsImageView };
 		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
-			VkImageView attachments[] = { swapchainImageViews[i] };
+			attachments[0] = swapchainImageViews[i];
 			info.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
 			info.pAttachments = attachments;
 			if (vkCreateFramebuffer(device, &info, nullptr, &endFramebuffers[i]) != VK_SUCCESS) {
@@ -628,6 +646,10 @@ namespace onart {
 		msInfo.pSampleMask = nullptr;
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+		depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencilInfo.depthTestEnable = VK_TRUE;
+		depthStencilInfo.depthWriteEnable = VK_TRUE;
 		
 		// fixed function: 색 블렌딩
 		// 블렌딩은 대체로 SRC_ALPHA, 1-SRC_ALPHA로 하니 반투명이 없을 거라면 성능을 위해 끄는 정도?
@@ -677,7 +699,7 @@ namespace onart {
 		pipelineInfo.pViewportState = &viewportStateInfo;
 		pipelineInfo.pRasterizationState = &rasterizerInfo;
 		pipelineInfo.pMultisampleState = &msInfo;
-		pipelineInfo.pDepthStencilState = nullptr;	// 보류
+		pipelineInfo.pDepthStencilState = &depthStencilInfo;	// 보류
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
 		pipelineInfo.pDynamicState = nullptr;	// 보류
 		pipelineInfo.layout = pipelineLayout0;
@@ -918,8 +940,10 @@ namespace onart {
 		rpbegin.renderArea.offset = { 0,0 };
 		rpbegin.renderArea.extent = { swapchainExtent.width, swapchainExtent.height };
 		VkClearValue clearColor = { 0.03f,0.03f,0.03f,1.0f };
-		rpbegin.clearValueCount = 1;
-		rpbegin.pClearValues = &clearColor;
+		VkClearValue clearDepthStencil = { 1.0f,0 };
+		VkClearValue clearValue[] = { clearColor, clearDepthStencil };
+		rpbegin.clearValueCount = sizeof(clearValue) / sizeof(clearValue[0]);
+		rpbegin.pClearValues = clearValue;
 		vkCmdBeginRenderPass(commandBuffers[commandBufferNumber], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
 		const VkDeviceSize offsets[1] = { 0 };
@@ -1284,6 +1308,7 @@ namespace onart {
 			fprintf(stderr, "Failed to create depth/stencil buffer image view\n");
 			return false;
 		}
+		dsImageFormat = imgInfo.format;
 		return true;
 	}
 
