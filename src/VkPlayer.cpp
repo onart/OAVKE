@@ -802,7 +802,12 @@ namespace onart {
 			{{-0.5,0.5,0},{1,0,0}}, // 좌하: 기본 적색
 			{{0.5,0.5,0},{0,1,0}},  // 우하: 기본 녹색
 			{{0.5,-0.5,0},{0,0,1}}, // 우상: 기본 청색
-			{{-0.5,-0.5,0},{1,1,1}} // 좌상: 기본 백색
+			{{-0.5,-0.5,0},{1,1,1}}, // 좌상: 기본 백색
+
+			{{-1,1,0.9},{1,1,1}},
+			{{1,1,0.9},{1,1,1}},
+			{{1,-1,0.9},{1,1,1}},
+			{{-1,-1,0.9},{1,1,1}}
 		};
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -951,6 +956,7 @@ namespace onart {
 		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 1, &ubset[commandBufferNumber], 0, nullptr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
 		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 3\n");
