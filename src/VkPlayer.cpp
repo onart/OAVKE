@@ -688,13 +688,18 @@ namespace onart {
 		dynamics.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
 		dynamics.pDynamicStates = dynamicStates;
 
+		VkPushConstantRange pushRange{};
+		pushRange.offset = 0;
+		pushRange.size = 16;
+		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
 		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &ubds;
-		pipelineLayoutInfo.pushConstantRangeCount = 0;
-		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = 1;
+		pipelineLayoutInfo.pPushConstantRanges = &pushRange;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout0);
 
 		// 파이프라인 생성
@@ -963,7 +968,10 @@ namespace onart {
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 1, &ubset[commandBufferNumber], 0, nullptr);
+		float clr[4] = { 1.0f,0,0,1 };
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 4, 4, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
 		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
@@ -1247,16 +1255,6 @@ namespace onart {
 	void VkPlayer::destroyFixedIndexBuffer() {
 		vkFreeMemory(device, ibmem, nullptr);
 		vkDestroyBuffer(device, ib, nullptr);
-	}
-
-	static VkFormat findSupportedFormat(VkPhysicalDevice device, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
-		for (VkFormat format : candidates) {
-			VkFormatProperties props;
-			vkGetPhysicalDeviceFormatProperties(device, VK_FORMAT_D32_SFLOAT, &props);
-			if ((tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) ||
-				(tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)) return format;
-		}
-		return candidates[0];
 	}
 
 	bool VkPlayer::createDSBuffer() {
