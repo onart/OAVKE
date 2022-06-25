@@ -6,6 +6,8 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *************************************************************************/
 #include "VkPlayer.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "externals/stb_image.h"
 #include <thread>
 #include <algorithm>
 #include <cstring>
@@ -56,6 +58,9 @@ namespace onart {
 	VkBuffer VkPlayer::vb = nullptr, VkPlayer::ib = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr, VkPlayer::ibmem = nullptr;
 
+	VkImage VkPlayer::tex0{};
+	VkDeviceMemory VkPlayer::texmem0{};
+
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
@@ -84,6 +89,7 @@ namespace onart {
 			&& createRenderPasses()
 			&& createFramebuffers()
 			&& createUniformBuffer()
+			&& createTex0()
 			&& createDescriptorSet()
 			&& createPipelines()
 			&& createFixedVertexBuffer()
@@ -113,6 +119,7 @@ namespace onart {
 		destroyFixedVertexBuffer();
 		destroyPipelines();
 		destroyDescriptorSet();
+		destroyTex0();
 		destroyUniformBuffer();
 		destroyFramebuffers();
 		destroyRenderPasses();
@@ -1328,5 +1335,176 @@ namespace onart {
 		vkDestroyImageView(device, dsImageView, nullptr);
 		vkFreeMemory(device, dsmem, nullptr);
 		vkDestroyImage(device, dsImage, nullptr);
+	}
+
+	inline static unsigned char* readImageData(const unsigned char* data, size_t len, int* width, int* height, int* nChannels) {
+		unsigned char* pix = stbi_load_from_memory(data, len, width, height, nChannels, 4);
+		return pix;
+	}
+
+	inline static unsigned char* readImageFile(const char* file, int* width, int* height, int* nChannels) {
+		unsigned char* pix = stbi_load(file, width, height, nChannels, 4);
+		return pix;
+	}
+
+	bool VkPlayer::createTex0() {
+		int w, h, ch;
+		unsigned char* pix = readImageFile("no1.png", &w, &h, &ch);
+		if (!pix) {
+			fprintf(stderr, "Failed to read image file\n");
+			return false;
+		}
+
+		VkImageCreateInfo imgInfo{};
+		imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imgInfo.imageType = VK_IMAGE_TYPE_2D;
+		imgInfo.extent.width = (uint32_t)w;
+		imgInfo.extent.height = (uint32_t)h;
+		imgInfo.extent.depth = 1;
+		imgInfo.mipLevels = 1;
+		imgInfo.arrayLayers = 1;
+		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imgInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+		if (vkCreateImage(device, &imgInfo, nullptr, &tex0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create texture image object\n");
+			free(pix);
+			return false;
+		}
+
+		VkMemoryRequirements mreq;
+		vkGetImageMemoryRequirements(device, tex0, &mreq);
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &texmem0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for texture image\n");
+			free(pix);
+			return false;
+		}
+		if (vkBindImageMemory(device, tex0, texmem0, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind texture image and device memory\n");
+			free(pix);
+			return false;
+		}
+
+		VkBufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		info.size = static_cast<VkDeviceSize>(w) * h * 4;
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VkBuffer temp;
+		VkDeviceMemory tempMem;
+		if (vkCreateBuffer(device, &info, nullptr, &temp) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create temporary buffer for texture image\n");
+			free(pix);
+			return false;
+		}
+
+		vkGetBufferMemoryRequirements(device, temp, &mreq);
+
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &tempMem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for temporary buffer for texture image\n");
+			free(pix);
+			return false;
+		}
+		void* data;
+		if (vkMapMemory(device, tempMem, 0, info.size, 0, &data) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to map to allocated memory\n");
+			free(pix);
+			return false;
+		}
+		memcpy(data, pix, info.size);
+		free(pix);
+		vkUnmapMemory(device, tempMem);
+		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
+
+		VkCommandBufferAllocateInfo cmdInfo{};
+		cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmdInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cmdInfo.commandBufferCount = 1;
+		cmdInfo.commandPool = commandPool;
+
+		VkCommandBuffer copyBuffer;
+		if (vkAllocateCommandBuffers(device, &cmdInfo, &copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate command buffer for copying texture image\n");
+			return false;
+		}
+		VkCommandBufferBeginInfo copyBegin{};
+		copyBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		copyBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(copyBuffer, &copyBegin) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to begin command buffer for copying texture image\n");
+			return false;
+		}
+		
+		VkImageMemoryBarrier barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.image = tex0;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+		
+		VkBufferImageCopy copyRegion{};
+		copyRegion.bufferRowLength = 0;
+		copyRegion.bufferImageHeight = 0;
+		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copyRegion.imageSubresource.mipLevel = 0;
+		copyRegion.imageSubresource.baseArrayLayer = 0;
+		copyRegion.imageSubresource.layerCount = 1;
+		copyRegion.imageOffset = { 0,0,0 };
+		copyRegion.imageExtent = imgInfo.extent;
+
+		vkCmdCopyBufferToImage(copyBuffer, temp, tex0, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+		
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &copyBuffer;
+		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to end command buffer for copying texture data\n");
+			return false;
+		}
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to submit command buffer for copying vertex buffer\n");
+			return false;
+		}
+		vkQueueWaitIdle(graphicsQueue);
+		vkFreeCommandBuffers(device, commandPool, 1, &copyBuffer);
+		vkDestroyBuffer(device, temp, nullptr);
+		vkFreeMemory(device, tempMem, nullptr);
+
+		return true;
+	}
+
+	void VkPlayer::destroyTex0() {
+		vkFreeMemory(device, texmem0, nullptr);
+		vkDestroyImage(device, tex0, nullptr);
 	}
 }

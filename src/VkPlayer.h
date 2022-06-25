@@ -65,6 +65,9 @@ namespace onart {
 		static VkBuffer vb, ib;						// 일시적인 고정 정점 버퍼
 		static VkDeviceMemory vbmem, ibmem;			// vb 메모리 핸들
 
+		static VkImage tex0;
+		static VkDeviceMemory texmem0;
+
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 	private:	// 함수
@@ -164,6 +167,10 @@ namespace onart {
 		static bool createDSBuffer();
 		// 깊이/스텐실 버퍼를 위한 이미지와 이미지 뷰를 해제합니다.
 		static void destroyDSBuffer();
+		// 고정된 텍스처 이미지를 하나 만들어 봅니다.
+		static bool createTex0();
+		// 고정된 텍스처 이미지를 해제합니다.
+		static void destroyTex0();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
