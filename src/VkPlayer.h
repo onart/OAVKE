@@ -67,6 +67,8 @@ namespace onart {
 
 		static VkImage tex0;
 		static VkDeviceMemory texmem0;
+		static VkImageView texview0;
+		static VkSampler sampler0;
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -171,6 +173,10 @@ namespace onart {
 		static bool createTex0();
 		// 고정된 텍스처 이미지를 해제합니다.
 		static void destroyTex0();
+		// tex0 샘플러를 생성합니다.
+		static bool createSampler0();
+		// tex0 샘플러를 제거합니다.
+		static void destroySampler0();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

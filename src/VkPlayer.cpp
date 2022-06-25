@@ -58,8 +58,10 @@ namespace onart {
 	VkBuffer VkPlayer::vb = nullptr, VkPlayer::ib = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr, VkPlayer::ibmem = nullptr;
 
-	VkImage VkPlayer::tex0{};
-	VkDeviceMemory VkPlayer::texmem0{};
+	VkImage VkPlayer::tex0 = nullptr;
+	VkImageView VkPlayer::texview0 = nullptr;
+	VkDeviceMemory VkPlayer::texmem0 = nullptr;
+	VkSampler VkPlayer::sampler0 = nullptr;
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -90,6 +92,7 @@ namespace onart {
 			&& createFramebuffers()
 			&& createUniformBuffer()
 			&& createTex0()
+			&& createSampler0()
 			&& createDescriptorSet()
 			&& createPipelines()
 			&& createFixedVertexBuffer()
@@ -1500,11 +1503,34 @@ namespace onart {
 		vkDestroyBuffer(device, temp, nullptr);
 		vkFreeMemory(device, tempMem, nullptr);
 
+		VkImageViewCreateInfo viewInfo{};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = tex0;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY };
+
+		VkImageView iv;
+		if (vkCreateImageView(device, &viewInfo, nullptr, &iv) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create image view for texture\n");
+			return false;
+		}
+
 		return true;
 	}
 
 	void VkPlayer::destroyTex0() {
 		vkFreeMemory(device, texmem0, nullptr);
 		vkDestroyImage(device, tex0, nullptr);
+	}
+
+	bool VkPlayer::createSampler0() {
+
+		return true;
 	}
 }
