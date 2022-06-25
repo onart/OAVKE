@@ -62,6 +62,7 @@ namespace onart {
 	VkImageView VkPlayer::texview0 = nullptr;
 	VkDeviceMemory VkPlayer::texmem0 = nullptr;
 	VkSampler VkPlayer::sampler0 = nullptr;
+	VkDescriptorSet VkPlayer::samplerSet[1] = {};
 
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
@@ -122,6 +123,7 @@ namespace onart {
 		destroyFixedVertexBuffer();
 		destroyPipelines();
 		destroyDescriptorSet();
+		destroySampler0();
 		destroyTex0();
 		destroyUniformBuffer();
 		destroyFramebuffers();
@@ -1096,31 +1098,49 @@ namespace onart {
 	}
 
 	bool VkPlayer::createDescriptorSet() {
-		VkDescriptorSetLayoutBinding uboBinding{};
+		VkDescriptorSetLayoutBinding dsBindings[2] = {};
+		VkDescriptorSetLayoutBinding& uboBinding = dsBindings[0];
+		VkDescriptorSetLayoutBinding& samplerBinding = dsBindings[1];
+
 		uboBinding.binding = 0;
 		uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboBinding.descriptorCount = 1;
 		uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;	// VK_SHADER_STAGE_ALL_GRAPHICS
 
+		samplerBinding.binding = 1;
+		samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerBinding.descriptorCount = 1;
+		samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
 		VkDescriptorSetLayoutCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		info.bindingCount = 1;
-		info.pBindings = &uboBinding;
+		info.bindingCount = sizeof(dsBindings) / sizeof(dsBindings[0]);
+		info.pBindings = dsBindings;
 		
 		if (vkCreateDescriptorSetLayout(device, &info, nullptr, &ubds) != VK_SUCCESS) {
 			fprintf(stderr,"Failed to create descriptor set layout for uniform buffer\n");
 			return false;
 		}
 		
-		VkDescriptorPoolSize size{};
-		size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		size.descriptorCount = COMMANDBUFFER_COUNT;
+		VkDescriptorPoolSize sizes[2] = {};
+
+		VkDescriptorPoolSize& ubsize = sizes[0];
+		VkDescriptorPoolSize& smsize = sizes[1];
+
+		ubsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubsize.descriptorCount = COMMANDBUFFER_COUNT;
+
+		smsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		smsize.descriptorCount = 1;
 
 		VkDescriptorPoolCreateInfo dpinfo{};
 		dpinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		dpinfo.poolSizeCount = 1;
-		dpinfo.pPoolSizes = &size;
-		dpinfo.maxSets = COMMANDBUFFER_COUNT;
+		dpinfo.poolSizeCount = sizeof(sizes) / sizeof(sizes[0]);
+		dpinfo.pPoolSizes = sizes;
+		dpinfo.maxSets = 0;
+		for (int i = 0; i < dpinfo.poolSizeCount; i++) {
+			dpinfo.maxSets += dpinfo.pPoolSizes[i].descriptorCount;
+		}
 		
 		if (vkCreateDescriptorPool(device, &dpinfo, nullptr, &ubpool) != VK_SUCCESS) {
 			fprintf(stderr,"Failed to create descriptor pool\n");
@@ -1155,7 +1175,30 @@ namespace onart {
 			descriptorWrite.pBufferInfo = &bufferInfo;
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
+		
+		std::vector<VkDescriptorSetLayout> samplerLayouts(sizeof(samplerSet) / sizeof(samplerSet[0]), ubds);
+		setInfo.descriptorSetCount = samplerLayouts.size();
+		setInfo.pSetLayouts = samplerLayouts.data();
+		if (vkAllocateDescriptorSets(device, &setInfo, samplerSet) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate descriptor set for sampler\n");
+			return false;
+		}
+		for (size_t i = 0; i < sizeof(samplerSet) / sizeof(samplerSet[0]); i++) {
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageView = texview0;
+			imageInfo.sampler = sampler0;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = samplerSet[i];
+			descriptorWrite.dstBinding = 1;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pImageInfo = &imageInfo;
+			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		}
 		return true;
 	}
 
@@ -1515,8 +1558,7 @@ namespace onart {
 		viewInfo.subresourceRange.levelCount = 1;
 		viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY };
 
-		VkImageView iv;
-		if (vkCreateImageView(device, &viewInfo, nullptr, &iv) != VK_SUCCESS) {
+		if (vkCreateImageView(device, &viewInfo, nullptr, &texview0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create image view for texture\n");
 			return false;
 		}
@@ -1525,12 +1567,38 @@ namespace onart {
 	}
 
 	void VkPlayer::destroyTex0() {
+		vkDestroyImageView(device, texview0, nullptr);
 		vkFreeMemory(device, texmem0, nullptr);
 		vkDestroyImage(device, tex0, nullptr);
 	}
 
 	bool VkPlayer::createSampler0() {
-
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 1.0f;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.maxAnisotropy = 1.0;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create sampler\n");
+			return false;
+		}
 		return true;
+	}
+
+	void VkPlayer::destroySampler0() {
+		vkDestroySampler(device, sampler0, nullptr);
 	}
 }

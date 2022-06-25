@@ -69,6 +69,7 @@ namespace onart {
 		static VkDeviceMemory texmem0;
 		static VkImageView texview0;
 		static VkSampler sampler0;
+		static VkDescriptorSet samplerSet[];
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
