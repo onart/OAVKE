@@ -71,6 +71,9 @@ namespace onart {
 		static VkSampler sampler0;
 		static VkDescriptorSet samplerSet[];
 
+		enum class OptionalEXT { ANISOTROPIC, OPTIONAL_EXT_MAX_ENUM };
+		static bool extSupported[];
+
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 	private:	// 함수
@@ -178,6 +181,8 @@ namespace onart {
 		static bool createSampler0();
 		// tex0 샘플러를 제거합니다.
 		static void destroySampler0();
+		// 확장 지원 여부를 확인합니다.
+		inline static bool hasExt(OptionalEXT ext) { return extSupported[(size_t)ext]; }
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

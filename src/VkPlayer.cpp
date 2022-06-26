@@ -64,6 +64,8 @@ namespace onart {
 	VkSampler VkPlayer::sampler0 = nullptr;
 	VkDescriptorSet VkPlayer::samplerSet[1] = {};
 
+	bool VkPlayer::extSupported[(size_t)VkPlayer::OptionalEXT::OPTIONAL_EXT_MAX_ENUM] = {};
+
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
@@ -186,6 +188,7 @@ namespace onart {
 			PhysicalDevice pd = setQueueFamily(cards[i]);
 			if (pd.card) { 
 				physicalDevice = pd;
+				extSupported[(size_t)OptionalEXT::ANISOTROPIC] = features.samplerAnisotropy;
 				return true;
 			}
 		}
@@ -231,6 +234,7 @@ namespace onart {
 		qInfo[1].pQueuePriorities = &queuePriority;
 		
 		VkPhysicalDeviceFeatures features{};
+		features.samplerAnisotropy = hasExt(OptionalEXT::ANISOTROPIC);
 
 		VkDeviceCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1589,9 +1593,8 @@ namespace onart {
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = 1.0f;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerInfo.anisotropyEnable = VK_FALSE;
-		samplerInfo.maxAnisotropy = 1.0;
-		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = 4.0;
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create sampler\n");
@@ -1603,4 +1606,5 @@ namespace onart {
 	void VkPlayer::destroySampler0() {
 		vkDestroySampler(device, sampler0, nullptr);
 	}
+
 }
