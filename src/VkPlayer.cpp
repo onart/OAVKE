@@ -542,7 +542,7 @@ namespace onart {
 
 	struct Vertex {	// 임시
 		float pos[3];
-		float color[3];
+		float tc[2];
 	};
 
 	template <class T, unsigned D>	// 임시
@@ -594,9 +594,9 @@ namespace onart {
 		vattrs[0].offset = offsetof(Vertex, pos);
 
 		vattrs[1].binding = 0;
-		vattrs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		vattrs[1].format = VK_FORMAT_R32G32_SFLOAT;
 		vattrs[1].location = 1;
-		vattrs[1].offset = offsetof(Vertex, color);
+		vattrs[1].offset = offsetof(Vertex, tc);
 		
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -706,10 +706,11 @@ namespace onart {
 		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
+		VkDescriptorSetLayout setlayouts[2] = { ubds,ubds };
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 1;
-		pipelineLayoutInfo.pSetLayouts = &ubds;
+		pipelineLayoutInfo.setLayoutCount = 2;
+		pipelineLayoutInfo.pSetLayouts = setlayouts;
 		pipelineLayoutInfo.pushConstantRangeCount = 1;
 		pipelineLayoutInfo.pPushConstantRanges = &pushRange;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout0);
@@ -824,15 +825,15 @@ namespace onart {
 
 	bool VkPlayer::createFixedVertexBuffer() {
 		Vertex ar[]{
-			{{-0.5,0.5,0.99},{1,0,0}}, // 좌하: 기본 적색
-			{{0.5,0.5,0.99},{0,1,0}},  // 우하: 기본 녹색
-			{{0.5,-0.5,0.99},{0,0,1}}, // 우상: 기본 청색
-			{{-0.5,-0.5,0.99},{1,1,1}}, // 좌상: 기본 백색
+			{{-0.5,0.5,0.99},{0,1}}, // 좌하
+			{{0.5,0.5,0.99},{1,1}},  // 우하
+			{{0.5,-0.5,0.99},{1,0}}, // 우상
+			{{-0.5,-0.5,0.99},{0,0}}, // 좌상
 
-			{{-1,1,0.9},{1,1,1}},
-			{{1,1,0.9},{1,1,1}},
-			{{1,-1,0.9},{1,1,1}},
-			{{-1,-1,0.9},{1,1,1}}
+			{{-1,1,0.9},{0,1}},
+			{{1,1,0.9},{1,1}},
+			{{1,-1,0.9},{1,0}},
+			{{-1,-1,0.9},{0,0}}
 		};
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -979,7 +980,8 @@ namespace onart {
 		const VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 1, &ubset[commandBufferNumber], 0, nullptr);
+		VkDescriptorSet bindDs[] = { ubset[commandBufferNumber],samplerSet[0] };
+		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, 0, nullptr);
 		float clr[4] = { 1.0f,0,0,1 };
 		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
