@@ -37,5 +37,11 @@
     <None Include="..\bin\tri.vert">
       <Filter>셰이더</Filter>
     </None>
+    <None Include="..\bin\post.frag">
+      <Filter>셰이더</Filter>
+    </None>
+    <None Include="..\bin\post.vert">
+      <Filter>셰이더</Filter>
+    </None>
   </ItemGroup>
 </Project>

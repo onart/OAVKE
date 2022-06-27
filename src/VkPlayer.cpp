@@ -47,6 +47,8 @@ namespace onart {
 	VkDeviceMemory VkPlayer::dsmem = nullptr;
 	VkFormat VkPlayer::dsImageFormat;
 
+	VkPipeline VkPlayer::pipeline1 = nullptr;
+	VkPipelineLayout VkPlayer::pipelineLayout1 = nullptr;
 
 	VkBuffer VkPlayer::ub[VkPlayer::COMMANDBUFFER_COUNT] = {};
 	VkDeviceMemory VkPlayer::ubmem[VkPlayer::COMMANDBUFFER_COUNT] = {};
@@ -63,6 +65,14 @@ namespace onart {
 	VkDeviceMemory VkPlayer::texmem0 = nullptr;
 	VkSampler VkPlayer::sampler0 = nullptr;
 	VkDescriptorSet VkPlayer::samplerSet[1] = {};
+
+	VkDescriptorSetLayout VkPlayer::sp1layout = nullptr;
+	VkDescriptorPool VkPlayer::sp1pool = nullptr;
+	VkDescriptorSet VkPlayer::sp1set = nullptr;
+
+	VkImage VkPlayer::middleImage = nullptr;
+	VkDeviceMemory VkPlayer::middleMem = nullptr;
+	VkImageView VkPlayer::middleImageView = nullptr;
 
 	bool VkPlayer::extSupported[(size_t)VkPlayer::OptionalEXT::OPTIONAL_EXT_MAX_ENUM] = {};
 
@@ -438,9 +448,11 @@ namespace onart {
 	}
 
 	bool VkPlayer::createRenderPass0() {
-		VkAttachmentDescription attachments[2]{};
+		VkAttachmentDescription attachments[3]{};
 		VkAttachmentDescription& colorAttachment = attachments[0];
 		VkAttachmentDescription& depthAttachment = attachments[1];
+		VkAttachmentDescription& middleColorAttachment = attachments[2];
+
 		colorAttachment.format = swapchainImageFormat;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -459,36 +471,72 @@ namespace onart {
 		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+		middleColorAttachment.format = swapchainImageFormat;
+		middleColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		middleColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		middleColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		middleColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		middleColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		middleColorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		middleColorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 		VkAttachmentReference colorAttachmentRef{};	// 서브패스가 볼 번호와 레이아웃 정의
-		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.attachment = 2;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentReference depthAttachmentRef{};
 		depthAttachmentRef.attachment = 1;
 		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		VkSubpassDescription subpass{};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttachmentRef;
-		subpass.pDepthStencilAttachment = &depthAttachmentRef;
+		VkAttachmentReference inputAttachmentRef{};
+		inputAttachmentRef.attachment = 2;
+		inputAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass = 0;	// 0번 서브패스가 외부에 대한 의존성이 존재
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 대기할 srcSubpass에서의 작업 유형
-		dependency.srcAccessMask = 0;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		VkAttachmentReference finalColor{};
+		finalColor.attachment = 0;
+		finalColor.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpasses[2] = {};
+		VkSubpassDescription& subpass0 = subpasses[0];
+		VkSubpassDescription& subpass1 = subpasses[1];
+
+		subpass0.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass0.colorAttachmentCount = 1;
+		subpass0.pColorAttachments = &colorAttachmentRef;
+		subpass0.pDepthStencilAttachment = &depthAttachmentRef;
+
+		subpass1.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass1.colorAttachmentCount = 1;
+		subpass1.pColorAttachments = &finalColor;
+		subpass1.inputAttachmentCount = 1;
+		subpass1.pInputAttachments = &inputAttachmentRef;
+
+		VkSubpassDependency dependencies[2] = {};
+		VkSubpassDependency& dependency0 = dependencies[0];
+		VkSubpassDependency& dependency1 = dependencies[1];
+		dependency0.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency0.dstSubpass = 1;	// 1번 서브패스가 외부에 대한 의존성이 존재
+		dependency0.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 대기할 srcSubpass에서의 작업 유형
+		dependency0.srcAccessMask = 0;
+		dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 
+		dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		dependency1.srcSubpass = 0;
+		dependency1.dstSubpass = 1;
+		dependency1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependency1.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		dependency1.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		dependency1.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 		VkRenderPassCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		info.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
 		info.pAttachments = attachments;
-		info.pSubpasses = &subpass;
-		info.subpassCount = 1;
-		info.pDependencies = &dependency;
-		info.dependencyCount = 1;
+		info.subpassCount = sizeof(subpasses) / sizeof(subpasses[0]);
+		info.pSubpasses = subpasses;
+		info.dependencyCount = sizeof(dependencies) / sizeof(dependencies[0]);
+		info.pDependencies = dependencies;
 		if (vkCreateRenderPass(device, &info, nullptr, &renderPass0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create render pass 0\n");
 			return false;
@@ -513,7 +561,7 @@ namespace onart {
 		info.layers = 1;
 		info.renderPass = renderPass0;
 
-		VkImageView attachments[] = { nullptr,dsImageView };
+		VkImageView attachments[] = { nullptr,dsImageView, middleImageView };
 		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
 			attachments[0] = swapchainImageViews[i];
 			info.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
@@ -537,10 +585,11 @@ namespace onart {
 	}
 
 	bool VkPlayer::createPipelines() {
-		return createPipeline0();
+		return createPipeline0() && createPipeline1();
 	}
 
 	void VkPlayer::destroyPipelines() {
+		destroyPipeline1();
 		destroyPipeline0();
 	}
 
@@ -976,7 +1025,7 @@ namespace onart {
 		rpbegin.renderArea.extent = { swapchainExtent.width, swapchainExtent.height };
 		VkClearValue clearColor = { 0.03f,0.03f,0.03f,1.0f };
 		VkClearValue clearDepthStencil = { 1.0f,0 };
-		VkClearValue clearValue[] = { clearColor, clearDepthStencil };
+		VkClearValue clearValue[] = { clearColor, clearDepthStencil, clearColor };
 		rpbegin.clearValueCount = sizeof(clearValue) / sizeof(clearValue[0]);
 		rpbegin.pClearValues = clearValue;
 		vkCmdBeginRenderPass(commandBuffers[commandBufferNumber], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
@@ -991,6 +1040,10 @@ namespace onart {
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
 		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 4, 4, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
+		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline1);
+		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout1, 0, 1, &sp1set, 0, nullptr);
+		vkCmdNextSubpass(commandBuffers[commandBufferNumber], VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdDraw(commandBuffers[commandBufferNumber], 3, 1, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[commandBufferNumber]);
 		if (vkEndCommandBuffer(commandBuffers[commandBufferNumber]) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 3\n");
@@ -1127,7 +1180,8 @@ namespace onart {
 			fprintf(stderr,"Failed to create descriptor set layout for uniform buffer\n");
 			return false;
 		}
-		
+
+
 		VkDescriptorPoolSize sizes[2] = {};
 
 		VkDescriptorPoolSize& ubsize = sizes[0];
@@ -1205,10 +1259,58 @@ namespace onart {
 			descriptorWrite.pImageInfo = &imageInfo;
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
+
+		VkDescriptorSetLayoutBinding sp1binding{};
+		sp1binding.binding = 0;
+		sp1binding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		sp1binding.descriptorCount = 1;
+		sp1binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		info.bindingCount = 1;
+		info.pBindings = &sp1binding;
+		if (vkCreateDescriptorSetLayout(device, &info, nullptr, &sp1layout) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create descriptor set layout for input attachment\n");
+			return false;
+		}
+
+		VkDescriptorPoolSize sp1poolSize{};
+		sp1poolSize.descriptorCount = 1;
+		sp1poolSize.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+
+		dpinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		dpinfo.poolSizeCount = 1;
+		dpinfo.pPoolSizes = &sp1poolSize;
+		dpinfo.maxSets = 1;
+
+		if (vkCreateDescriptorPool(device, &dpinfo, nullptr, &sp1pool) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create descriptor pool for input attachment\n");
+			return false;
+		}
+		setInfo.descriptorPool = sp1pool;
+		setInfo.descriptorSetCount = 1;
+		setInfo.pSetLayouts = &sp1layout;
+		if (vkAllocateDescriptorSets(device, &setInfo, &sp1set) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate descriptor set for input attachment\n");
+			return false;
+		}
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageView = middleImageView;
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		VkWriteDescriptorSet descriptorWrite{};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = sp1set;
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &imageInfo;
+		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+
 		return true;
 	}
 
 	void VkPlayer::destroyDescriptorSet() {
+		vkDestroyDescriptorPool(device, sp1pool, nullptr);
+		vkDestroyDescriptorSetLayout(device, sp1layout, nullptr);
 		vkDestroyDescriptorPool(device, ubpool, nullptr);
 		vkDestroyDescriptorSetLayout(device, ubds, nullptr);
 	}
@@ -1380,12 +1482,42 @@ namespace onart {
 			return false;
 		}
 		dsImageFormat = imgInfo.format;
+
+		// 새 색 첨부물
+		imgInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+		imgInfo.format = swapchainImageFormat;
+		if (vkCreateImage(device, &imgInfo, nullptr, &middleImage) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create intermediate image\n");
+			return false;
+		}
+		vkGetImageMemoryRequirements(device, middleImage, &mreq);
+		memInfo.allocationSize = mreq.size;
+		memInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+		if (vkAllocateMemory(device, &memInfo, nullptr, &middleMem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate intermediate image memory\n");
+			return false;
+		}
+		if (vkBindImageMemory(device, middleImage, middleMem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind intermediate image - memory\n");
+			return false;
+		}
+		viewInfo.image = middleImage;
+		viewInfo.format = imgInfo.format;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		if (vkCreateImageView(device, &viewInfo, nullptr, &middleImageView) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create intermediate image view\n");
+			return false;
+		}
+
 		return true;
 	}
 
 	void VkPlayer::destroyDSBuffer() {
+		vkDestroyImageView(device, middleImageView, nullptr);
 		vkDestroyImageView(device, dsImageView, nullptr);
+		vkFreeMemory(device, middleMem, nullptr);
 		vkFreeMemory(device, dsmem, nullptr);
+		vkDestroyImage(device, middleImage, nullptr);
 		vkDestroyImage(device, dsImage, nullptr);
 	}
 
@@ -1593,8 +1725,8 @@ namespace onart {
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = 1.0f;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = 4.0;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.maxAnisotropy = 1.0;
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 		if (vkCreateSampler(device, &samplerInfo, nullptr, &sampler0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create sampler\n");
@@ -1607,4 +1739,152 @@ namespace onart {
 		vkDestroySampler(device, sampler0, nullptr);
 	}
 
+	bool VkPlayer::createPipeline1() {
+		// programmable function: 세이더 종류는 수십 가지쯤 돼 보이므로, 오버로드로 수용할 것
+		VkShaderModule vertModule = createShaderModule("post.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
+		VkShaderModule fragModule = createShaderModule("post.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
+		VkPipelineShaderStageCreateInfo shaderStagesInfo[2] = {};
+		shaderStagesInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStagesInfo[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		shaderStagesInfo[0].module = vertModule;
+		shaderStagesInfo[0].pName = "main";
+
+		shaderStagesInfo[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStagesInfo[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		shaderStagesInfo[1].module = fragModule;
+		shaderStagesInfo[1].pName = "main";
+
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
+		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3개씩 끊어 삼각형
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff 혹은 0xffffffff 인덱스로 스트립 끊기 가능 여부
+
+		// fixed function: 뷰포트, 시저 (뷰포트: cvv상 그림이 그려질 최종 직사각형, 시저: 스왑체인 이미지에서 그려지는 것을 허용할 부분)
+		// ** 뷰포트는 런타임에 조정 가능 ** 
+		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)swapchainExtent.width;
+		viewport.height = (float)swapchainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor{};
+		scissor.offset = { 0,0 };
+		scissor.extent = swapchainExtent;
+
+		VkPipelineViewportStateCreateInfo viewportStateInfo{};
+		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportStateInfo.viewportCount = 1;
+		viewportStateInfo.pViewports = &viewport;
+		viewportStateInfo.scissorCount = 1;
+		viewportStateInfo.pScissors = &scissor;
+
+		// fixed function: 래스터라이저
+		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
+		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizerInfo.depthClampEnable = VK_FALSE;	// 표준 뷰 볼륨의 z좌표가 초과하면 잘라내지 않고 z값 자체를 줄이면서 살림
+		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUE인 경우 출력이 안됨
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// 와이어프레임 등 지정 가능. 아마 건드릴 일 없을 것
+		rasterizerInfo.lineWidth = 1.0f;					// 선 너비: 건드릴 일 없음
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// 면 거름: 건드릴 일 있음
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// 이건 건드릴 일 없을 듯
+		rasterizerInfo.depthBiasEnable = VK_FALSE;			// 여기부터 4개는 깊이 값을 직접 건드리는 부분. 사용할 일 없을 듯
+		rasterizerInfo.depthBiasConstantFactor = 0.0f;
+		rasterizerInfo.depthBiasClamp = 0.0f;
+		rasterizerInfo.depthBiasSlopeFactor = 0.0f;
+
+		// fixed function: 멀티샘플링 (현재는 공란으로)
+		// 안티에일리어싱에 사용하는 경우에 대하여 매개변수 수용할 필요가 있을듯
+		VkPipelineMultisampleStateCreateInfo msInfo{};
+		msInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		msInfo.sampleShadingEnable = VK_FALSE;
+		msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		msInfo.minSampleShading = 1.0f;
+		msInfo.alphaToCoverageEnable = VK_FALSE;
+		msInfo.alphaToOneEnable = VK_FALSE;
+		msInfo.pSampleMask = nullptr;
+
+		VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
+		depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+
+		// fixed function: 색 블렌딩
+		// 블렌딩은 대체로 SRC_ALPHA, 1-SRC_ALPHA로 하니 반투명이 없을 거라면 성능을 위해 끄는 정도?
+		VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
+		colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachmentState.blendEnable = VK_TRUE;
+		colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+		VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
+		colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendInfo.logicOpEnable = VK_FALSE;
+		colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
+		colorBlendInfo.attachmentCount = 1;
+		colorBlendInfo.pAttachments = &colorBlendAttachmentState;
+		colorBlendInfo.blendConstants[0] = 0.0f;
+		colorBlendInfo.blendConstants[1] = 0.0f;
+		colorBlendInfo.blendConstants[2] = 0.0f;
+		colorBlendInfo.blendConstants[3] = 0.0f;
+
+		VkDynamicState dynamicStates[1] = { /*VK_DYNAMIC_STATE_VIEWPORT*/ };
+		VkPipelineDynamicStateCreateInfo dynamics{};
+		dynamics.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamics.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
+		dynamics.pDynamicStates = dynamicStates;
+
+		VkPushConstantRange pushRange{};
+		pushRange.offset = 0;
+		pushRange.size = 16;
+		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &sp1layout;
+		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout1);
+
+		// 파이프라인 생성
+		VkGraphicsPipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = sizeof(shaderStagesInfo) / sizeof(shaderStagesInfo[0]);
+		pipelineInfo.pStages = shaderStagesInfo;
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
+		pipelineInfo.pViewportState = &viewportStateInfo;
+		pipelineInfo.pRasterizationState = &rasterizerInfo;
+		pipelineInfo.pMultisampleState = &msInfo;
+		pipelineInfo.pDepthStencilState = &depthStencilInfo;	// 보류
+		pipelineInfo.pColorBlendState = &colorBlendInfo;
+		pipelineInfo.pDynamicState = nullptr;	// 보류
+		pipelineInfo.layout = pipelineLayout1;
+		pipelineInfo.renderPass = renderPass0;
+		pipelineInfo.subpass = 1;
+		// 아래 2개: 기존 파이프라인을 기반으로 비슷하게 생성하기 위함
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
+
+		VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline1);
+
+		vkDestroyShaderModule(device, vertModule, nullptr);
+		vkDestroyShaderModule(device, fragModule, nullptr);
+		if (result != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create pipeline 0\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyPipeline1() {
+		vkDestroyPipelineLayout(device, pipelineLayout1, nullptr);
+		vkDestroyPipeline(device, pipeline1, nullptr);
+	}
 }

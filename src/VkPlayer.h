@@ -55,6 +55,16 @@ namespace onart {
 		static VkDeviceMemory dsmem;				// dsImage를 위한 메모리
 		static VkFormat dsImageFormat;
 
+		static VkImage middleImage;
+		static VkDeviceMemory middleMem;
+		static VkImageView middleImageView;
+
+		static VkPipeline pipeline1;
+		static VkPipelineLayout pipelineLayout1;
+		static VkDescriptorSetLayout sp1layout;
+		static VkDescriptorPool sp1pool;
+		static VkDescriptorSet sp1set;
+
 		static VkBuffer ub[];						// 공유 버퍼
 		static VkDeviceMemory ubmem[];				// 공유 버퍼 메모리 핸들
 		static void* ubmap[];						// 공유 버퍼 메모리 맵 공유 지점
@@ -183,6 +193,10 @@ namespace onart {
 		static void destroySampler0();
 		// 확장 지원 여부를 확인합니다.
 		inline static bool hasExt(OptionalEXT ext) { return extSupported[(size_t)ext]; }
+		// 후처리 파이프라인을 생성합니다.
+		static bool createPipeline1();
+		// 후처리 파이프라인을 해제합니다.
+		static void destroyPipeline1();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

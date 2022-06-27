@@ -148,6 +148,8 @@
     <ClInclude Include="VkPlayer.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\bin\post.frag" />
+    <None Include="..\bin\post.vert" />
     <None Include="..\bin\tri.frag" />
     <None Include="..\bin\tri.vert" />
   </ItemGroup>
