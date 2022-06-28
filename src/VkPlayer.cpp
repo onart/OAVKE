@@ -20,6 +20,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 
 namespace onart {
 
+	int rwid = 16, rheight = 9;
+
 	VkInstance VkPlayer::instance = nullptr;
 	VkPlayer::PhysicalDevice VkPlayer::physicalDevice{};
 	VkDevice VkPlayer::device = nullptr;
@@ -124,6 +126,11 @@ namespace onart {
 				continue;
 			}
 			if (shouldRecreateSwapchain) {
+				int width = 0, height = 0;
+				do {
+					glfwGetFramebufferSize(window, &width, &height);
+					glfwWaitEvents();
+				} while (width == 0 || height == 0);
 				vkDeviceWaitIdle(device);
 
 				destroyDescriptorSet();
@@ -697,12 +704,23 @@ namespace onart {
 		// fixed function: 뷰포트, 시저 (뷰포트: cvv상 그림이 그려질 최종 직사각형, 시저: 스왑체인 이미지에서 그려지는 것을 허용할 부분)
 		// ** 뷰포트는 런타임에 조정 가능 ** 
 		VkViewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapchainExtent.width;
-		viewport.height = (float)swapchainExtent.height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
+
+		float r = (float)rwid / rheight;
+
+		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) { // 뷰포트를 창의 가로에 맞춰야 할 때
+			viewport.x = 0.0f;
+			viewport.width = (float)swapchainExtent.width;
+			viewport.height = swapchainExtent.width / r;
+			viewport.y = (swapchainExtent.height - viewport.height) * 0.5f;
+		}
+		else {
+			viewport.y = 0.0f;
+			viewport.height = (float)swapchainExtent.height;
+			viewport.width = swapchainExtent.height * r;
+			viewport.x = (swapchainExtent.width - viewport.width) * 0.5f;
+		}
 
 		VkRect2D scissor{};
 		scissor.offset = { 0,0 };
@@ -1030,7 +1048,7 @@ namespace onart {
 		vkResetCommandBuffer(commandBuffers[commandBufferNumber], 0);
 
 		float st = sinf(tp), ct = cosf(tp);
-		float asp = (float)swapchainExtent.height / swapchainExtent.width;
+		float asp = (float)rheight / rwid;
 		float rotation[16] = {
 			ct*asp,st,0,0,
 			-st*asp,ct,0,0,
@@ -1803,8 +1821,20 @@ namespace onart {
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
-		scissor.offset = { 0,0 };
-		scissor.extent = swapchainExtent;
+		float r = (float)rwid / rheight;
+
+		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) {
+			scissor.extent.width = swapchainExtent.width;
+			scissor.extent.height = swapchainExtent.width * rheight / rwid;
+			scissor.offset.x = 0;
+			scissor.offset.y = int((swapchainExtent.height - scissor.extent.height) * 0.5f);
+		}
+		else {
+			scissor.extent.height = swapchainExtent.height;
+			scissor.extent.width = swapchainExtent.height * rwid / rheight;
+			scissor.offset.y = 0;
+			scissor.offset.x = int((swapchainExtent.width - scissor.extent.width) * 0.5f);
+		}
 
 		VkPipelineViewportStateCreateInfo viewportStateInfo{};
 		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
