@@ -79,6 +79,8 @@ namespace onart {
 	int VkPlayer::frame = 1;
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
+	bool VkPlayer::resizing = false, VkPlayer::shouldRecreateSwapchain = false;
+
 	void VkPlayer::start() {
 		if (init()) {
 			mainLoop();
@@ -117,6 +119,28 @@ namespace onart {
 	void VkPlayer::mainLoop() {
 		for (frame = 1; glfwWindowShouldClose(window) != GLFW_TRUE; frame++) {
 			glfwPollEvents();
+			if (resizing) {
+				resizing = false;
+				continue;
+			}
+			if (shouldRecreateSwapchain) {
+				vkDeviceWaitIdle(device);
+
+				destroyDescriptorSet();
+				destroyPipelines();
+				destroyFramebuffers();
+				destroyDSBuffer();
+				destroySwapchainImageViews();
+				destroySwapchain();
+
+				createSwapchain();
+				createSwapchainImageViews();
+				createDSBuffer();
+				createFramebuffers();
+				createDescriptorSet();
+				createPipelines();
+				shouldRecreateSwapchain = false;
+			}
 			static float prev = 0;
 			tp = (float)glfwGetTime();
 			dt = tp - prev;
@@ -295,9 +319,14 @@ namespace onart {
 		vkDestroyCommandPool(device, commandPool, nullptr);
 	}
 
+	void VkPlayer::onResize(GLFWwindow* window, int width, int height) {
+		resizing = true;
+		shouldRecreateSwapchain = true;
+	}
+
 	bool VkPlayer::createWindow() {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 		window = glfwCreateWindow(width, height, u8"OAVKE", nullptr, nullptr);
 		if (!window) {
 			fprintf(stderr, "Failed to create window\n");
@@ -307,6 +336,7 @@ namespace onart {
 			fprintf(stderr, "Failed to create window surface\n");
 			return false;
 		}
+		glfwSetFramebufferSizeCallback(window, onResize);
 		return true;
 	}
 

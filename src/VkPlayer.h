@@ -86,6 +86,7 @@ namespace onart {
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
+		static bool resizing, shouldRecreateSwapchain;
 	private:	// 함수
 		// GLFW, Vulkan을 비롯하여 필요한 모든 것을 초기화합니다.
 		static bool init();
@@ -197,6 +198,8 @@ namespace onart {
 		static bool createPipeline1();
 		// 후처리 파이프라인을 해제합니다.
 		static void destroyPipeline1();
+		// glfw 프레임버퍼 리사이즈 콜백입니다.
+		static void onResize(GLFWwindow* window, int width, int height);
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
