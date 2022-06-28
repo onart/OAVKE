@@ -704,23 +704,12 @@ namespace onart {
 		// fixed function: 뷰포트, 시저 (뷰포트: cvv상 그림이 그려질 최종 직사각형, 시저: 스왑체인 이미지에서 그려지는 것을 허용할 부분)
 		// ** 뷰포트는 런타임에 조정 가능 ** 
 		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float)swapchainExtent.width;
+		viewport.height = (float)swapchainExtent.height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
-
-		float r = (float)rwid / rheight;
-
-		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) { // 뷰포트를 창의 가로에 맞춰야 할 때
-			viewport.x = 0.0f;
-			viewport.width = (float)swapchainExtent.width;
-			viewport.height = swapchainExtent.width / r;
-			viewport.y = (swapchainExtent.height - viewport.height) * 0.5f;
-		}
-		else {
-			viewport.y = 0.0f;
-			viewport.height = (float)swapchainExtent.height;
-			viewport.width = swapchainExtent.height * r;
-			viewport.x = (swapchainExtent.width - viewport.width) * 0.5f;
-		}
 
 		VkRect2D scissor{};
 		scissor.offset = { 0,0 };
@@ -795,7 +784,7 @@ namespace onart {
 		colorBlendInfo.blendConstants[2] = 0.0f;
 		colorBlendInfo.blendConstants[3] = 0.0f;
 
-		VkDynamicState dynamicStates[1] = { /*VK_DYNAMIC_STATE_VIEWPORT*/ };
+		VkDynamicState dynamicStates[1] = { VK_DYNAMIC_STATE_VIEWPORT };
 		VkPipelineDynamicStateCreateInfo dynamics{};
 		dynamics.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamics.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
@@ -826,9 +815,9 @@ namespace onart {
 		pipelineInfo.pViewportState = &viewportStateInfo;
 		pipelineInfo.pRasterizationState = &rasterizerInfo;
 		pipelineInfo.pMultisampleState = &msInfo;
-		pipelineInfo.pDepthStencilState = &depthStencilInfo;	// 보류
+		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
-		pipelineInfo.pDynamicState = nullptr;	// 보류
+		pipelineInfo.pDynamicState = &dynamics;
 		pipelineInfo.layout = pipelineLayout0;
 		pipelineInfo.renderPass = renderPass0;
 		pipelineInfo.subpass = 0;
@@ -1064,6 +1053,38 @@ namespace onart {
 			fprintf(stderr, "Fail 2\n");
 			return;
 		}
+		VkViewport viewport{};
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		float r = (float)rwid / rheight;
+
+		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) {
+			viewport.x = 0.0f;
+			viewport.width = (float)swapchainExtent.width;
+			viewport.height = swapchainExtent.width / r;
+			viewport.y = (swapchainExtent.height - viewport.height) * 0.5f;
+		}
+		else {
+			viewport.y = 0.0f;
+			viewport.height = (float)swapchainExtent.height;
+			viewport.width = swapchainExtent.height * r;
+			viewport.x = (swapchainExtent.width - viewport.width) * 0.5f;
+		}
+		VkRect2D scissor{};
+
+		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) {
+			scissor.extent.width = swapchainExtent.width;
+			scissor.extent.height = swapchainExtent.width * rheight / rwid;
+			scissor.offset.x = 0;
+			scissor.offset.y = int((swapchainExtent.height - scissor.extent.height) * 0.5f);
+		}
+		else {
+			scissor.extent.height = swapchainExtent.height;
+			scissor.extent.width = swapchainExtent.height * rwid / rheight;
+			scissor.offset.y = 0;
+			scissor.offset.x = int((swapchainExtent.width - scissor.extent.width) * 0.5f);
+		}
 
 		VkRenderPassBeginInfo rpbegin{};
 		rpbegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1078,6 +1099,7 @@ namespace onart {
 		rpbegin.pClearValues = clearValue;
 		vkCmdBeginRenderPass(commandBuffers[commandBufferNumber], &rpbegin, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline0);
+		vkCmdSetViewport(commandBuffers[commandBufferNumber], 0, 1, &viewport);
 		const VkDeviceSize offsets[1] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
@@ -1089,6 +1111,7 @@ namespace onart {
 		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 4, 4, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline1);
+		vkCmdSetScissor(commandBuffers[commandBufferNumber], 0, 1, &scissor);
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout1, 0, 1, &sp1set, 0, nullptr);
 		vkCmdNextSubpass(commandBuffers[commandBufferNumber], VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdDraw(commandBuffers[commandBufferNumber], 3, 1, 0, 0);
@@ -1821,20 +1844,8 @@ namespace onart {
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
-		float r = (float)rwid / rheight;
-
-		if (swapchainExtent.width * rheight < swapchainExtent.height * rwid) {
-			scissor.extent.width = swapchainExtent.width;
-			scissor.extent.height = swapchainExtent.width * rheight / rwid;
-			scissor.offset.x = 0;
-			scissor.offset.y = int((swapchainExtent.height - scissor.extent.height) * 0.5f);
-		}
-		else {
-			scissor.extent.height = swapchainExtent.height;
-			scissor.extent.width = swapchainExtent.height * rwid / rheight;
-			scissor.offset.y = 0;
-			scissor.offset.x = int((swapchainExtent.width - scissor.extent.width) * 0.5f);
-		}
+		scissor.offset = { 0,0 };
+		scissor.extent = swapchainExtent;
 
 		VkPipelineViewportStateCreateInfo viewportStateInfo{};
 		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -1894,7 +1905,7 @@ namespace onart {
 		colorBlendInfo.blendConstants[2] = 0.0f;
 		colorBlendInfo.blendConstants[3] = 0.0f;
 
-		VkDynamicState dynamicStates[1] = { /*VK_DYNAMIC_STATE_VIEWPORT*/ };
+		VkDynamicState dynamicStates[1] = { VK_DYNAMIC_STATE_SCISSOR };
 		VkPipelineDynamicStateCreateInfo dynamics{};
 		dynamics.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamics.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
@@ -1911,7 +1922,7 @@ namespace onart {
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &sp1layout;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout1);
-
+		
 		// 파이프라인 생성
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1922,9 +1933,9 @@ namespace onart {
 		pipelineInfo.pViewportState = &viewportStateInfo;
 		pipelineInfo.pRasterizationState = &rasterizerInfo;
 		pipelineInfo.pMultisampleState = &msInfo;
-		pipelineInfo.pDepthStencilState = &depthStencilInfo;	// 보류
+		pipelineInfo.pDepthStencilState = &depthStencilInfo;
 		pipelineInfo.pColorBlendState = &colorBlendInfo;
-		pipelineInfo.pDynamicState = nullptr;	// 보류
+		pipelineInfo.pDynamicState = &dynamics;
 		pipelineInfo.layout = pipelineLayout1;
 		pipelineInfo.renderPass = renderPass0;
 		pipelineInfo.subpass = 1;
