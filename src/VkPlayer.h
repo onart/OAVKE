@@ -15,7 +15,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 
 #define GLFW_INCLUDE_VULKAN
 #include "externals/glfw/glfw3.h"
-
+#include "externals/vk_mem_alloc.h"
 #include "externals/shaderc/shaderc.hpp"
 
 namespace onart {
@@ -83,6 +83,8 @@ namespace onart {
 
 		enum class OptionalEXT { ANISOTROPIC, OPTIONAL_EXT_MAX_ENUM };
 		static bool extSupported[];
+
+		static VmaAllocator allocator;
 
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
@@ -200,6 +202,10 @@ namespace onart {
 		static void destroyPipeline1();
 		// glfw 프레임버퍼 리사이즈 콜백입니다.
 		static void onResize(GLFWwindow* window, int width, int height);
+		// VMA 할당기를 초기화합니다.
+		static bool initAllocator();
+		// VMA 할당기 사용을 종료합니다.
+		static void destroyAllocator();
 	private:	// 상수
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };

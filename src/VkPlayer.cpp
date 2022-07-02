@@ -5,6 +5,11 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *************************************************************************/
+
+#define VMA_VULKAN_VERSION 1000000
+#define VMA_IMPLEMENTATION
+#include "externals/vk_mem_alloc.h"
+
 #include "VkPlayer.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "externals/stb_image.h"
@@ -21,7 +26,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 namespace onart {
 
 	int rwid = 16, rheight = 9;
-
 	VkInstance VkPlayer::instance = nullptr;
 	VkPlayer::PhysicalDevice VkPlayer::physicalDevice{};
 	VkDevice VkPlayer::device = nullptr;
@@ -76,6 +80,8 @@ namespace onart {
 	VkDeviceMemory VkPlayer::middleMem = nullptr;
 	VkImageView VkPlayer::middleImageView = nullptr;
 
+	VmaAllocator VkPlayer::allocator = nullptr;
+
 	bool VkPlayer::extSupported[(size_t)VkPlayer::OptionalEXT::OPTIONAL_EXT_MAX_ENUM] = {};
 
 	int VkPlayer::frame = 1;
@@ -101,6 +107,7 @@ namespace onart {
 			&& createWindow()
 			&& findPhysicalDevice()
 			&& createDevice()
+			&& initAllocator()
 			&& createCommandPool()
 			&& createSwapchain()
 			&& createSwapchainImageViews()
@@ -1521,7 +1528,7 @@ namespace onart {
 			fprintf(stderr, "Failed to create depth/stencil buffer image\n");
 			return false;
 		}
-		
+
 		VkMemoryRequirements mreq;
 		vkGetImageMemoryRequirements(device, dsImage, &mreq);
 		VkMemoryAllocateInfo memInfo{};
@@ -1957,5 +1964,22 @@ namespace onart {
 	void VkPlayer::destroyPipeline1() {
 		vkDestroyPipelineLayout(device, pipelineLayout1, nullptr);
 		vkDestroyPipeline(device, pipeline1, nullptr);
+	}
+
+	bool VkPlayer::initAllocator() {
+		VmaAllocatorCreateInfo info{};
+		info.instance = instance;
+		info.device = device;
+		info.physicalDevice = physicalDevice.card;
+		info.vulkanApiVersion = VK_API_VERSION_1_0;
+		if (vmaCreateAllocator(&info, &allocator) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create VMA allocator\n");
+			return false;
+		}
+		return true;
+	}
+
+	void VkPlayer::destroyAllocator() {
+		vmaDestroyAllocator(allocator);
 	}
 }
