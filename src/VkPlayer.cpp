@@ -88,6 +88,7 @@ namespace onart {
 	float VkPlayer::dt = 1.0f / 60, VkPlayer::tp = 0, VkPlayer::idt = 60.0f;
 
 	bool VkPlayer::resizing = false, VkPlayer::shouldRecreateSwapchain = false;
+	VkDeviceSize VkPlayer::minUniformBufferOffset;
 
 	void VkPlayer::start() {
 		if (init()) {
@@ -230,13 +231,15 @@ namespace onart {
 		VkPhysicalDeviceFeatures features;
 		for (uint32_t i = 0; i < count; i++) {
 			vkGetPhysicalDeviceProperties(cards[i], &properties);
-			// printf("maximum %d buffers\n",properties.limits.maxMemoryAllocationCount);
+			//printf("maximum %lld buffers\n",properties.limits.minUniformBufferOffsetAlignment);
+
 			vkGetPhysicalDeviceFeatures(cards[i], &features);
 			if (!checkDeviceExtension(cards[i])) continue;
 			PhysicalDevice pd = setQueueFamily(cards[i]);
 			if (pd.card) { 
 				physicalDevice = pd;
 				extSupported[(size_t)OptionalEXT::ANISOTROPIC] = features.samplerAnisotropy;
+				minUniformBufferOffset = properties.limits.minUniformBufferOffsetAlignment;
 				return true;
 			}
 		}
@@ -1052,6 +1055,9 @@ namespace onart {
 			0,0,0,1
 		};
 		memcpy(ubmap[commandBufferNumber], rotation, sizeof(rotation));
+		rotation[1] *= -1;
+		rotation[4] *= -1;
+		memcpy((char*)ubmap[commandBufferNumber] + minUniformBufferOffset, rotation, sizeof(rotation));
 
 		VkCommandBufferBeginInfo buffbegin{};
 		buffbegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1111,10 +1117,13 @@ namespace onart {
 		vkCmdBindVertexBuffers(commandBuffers[commandBufferNumber], 0, 1, &vb, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[commandBufferNumber], ib, 0, VK_INDEX_TYPE_UINT16);
 		VkDescriptorSet bindDs[] = { ubset[commandBufferNumber],samplerSet[0] };
-		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, 0, nullptr);
+		uint32_t dynamicOffs[] = { 0,0 };
+		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
 		float clr[4] = { 1.0f,0,0,1 };
 		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
+		dynamicOffs[0] = minUniformBufferOffset;
+		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
 		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 4, 4, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline1);
@@ -1190,10 +1199,16 @@ namespace onart {
 	}
 
 	bool VkPlayer::createUniformBuffer() {
+		VkDeviceSize dynamicAlignment = sizeof(float) * 16;
+		if (minUniformBufferOffset > 0) {
+			dynamicAlignment = dynamicAlignment + minUniformBufferOffset - 1;
+			dynamicAlignment -= dynamicAlignment % minUniformBufferOffset;
+		}
+
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		info.size = sizeof(float) * 16;
+		info.size = dynamicAlignment * 2;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		for (int i = 0; i < COMMANDBUFFER_COUNT; i++) {
@@ -1240,7 +1255,7 @@ namespace onart {
 		VkDescriptorSetLayoutBinding& samplerBinding = dsBindings[1];
 
 		uboBinding.binding = 0;
-		uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		uboBinding.descriptorCount = 1;
 		uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;	// VK_SHADER_STAGE_ALL_GRAPHICS
 
@@ -1265,7 +1280,7 @@ namespace onart {
 		VkDescriptorPoolSize& ubsize = sizes[0];
 		VkDescriptorPoolSize& smsize = sizes[1];
 
-		ubsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		ubsize.descriptorCount = COMMANDBUFFER_COUNT;
 
 		smsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1296,19 +1311,19 @@ namespace onart {
 			fprintf(stderr,"Failed to allocate descriptor set\n");
 			return false;
 		}
-
+		VkDeviceSize dynamicAlignment = 256;
 		for (size_t i = 0; i < COMMANDBUFFER_COUNT; i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = ub[i];
 			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(float) * 16;
+			bufferInfo.range = dynamicAlignment;
 			
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrite.dstSet = ubset[i];
 			descriptorWrite.dstBinding = 0;
 			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 			descriptorWrite.descriptorCount = 1;
 			descriptorWrite.pBufferInfo = &bufferInfo;
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);

@@ -89,6 +89,7 @@ namespace onart {
 		static int frame;							// 프레임 번호(1부터 시작)
 		static float dt, tp, idt;					// 현재 프레임과 이전 프레임 사이의 간격(초) / 프레임 시작 시점(초) / dt의 역수
 		static bool resizing, shouldRecreateSwapchain;
+		static VkDeviceSize minUniformBufferOffset;
 	private:	// 함수
 		// GLFW, Vulkan을 비롯하여 필요한 모든 것을 초기화합니다.
 		static bool init();
