@@ -18,9 +18,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 #include <cstring>
 
 #ifdef _MSC_VER
-	#pragma comment(lib, "externals/vulkan/vulkan-1.lib")
-	#pragma comment(lib, "externals/glfw/glfw3_mt.lib")
-    #pragma comment(lib, "externals/shaderc/shaderc_shared.lib")
+#pragma comment(lib, "externals/vulkan/vulkan-1.lib")
+#pragma comment(lib, "externals/glfw/glfw3_mt.lib")
+#pragma comment(lib, "externals/shaderc/shaderc_shared.lib")
 #endif
 
 namespace onart {
@@ -66,9 +66,9 @@ namespace onart {
 	VkBuffer VkPlayer::vb = nullptr, VkPlayer::ib = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr, VkPlayer::ibmem = nullptr;
 
-	VkImage VkPlayer::tex0 = nullptr;
-	VkImageView VkPlayer::texview0 = nullptr;
-	VkDeviceMemory VkPlayer::texmem0 = nullptr;
+	VkImage VkPlayer::tex0 = nullptr, VkPlayer::tex1 = nullptr;
+	VkImageView VkPlayer::texview0 = nullptr, VkPlayer::texview1 = nullptr;
+	VkDeviceMemory VkPlayer::texmem0 = nullptr, VkPlayer::texmem1 = nullptr;
 	VkSampler VkPlayer::sampler0 = nullptr;
 	VkDescriptorSet VkPlayer::samplerSet[1] = {};
 
@@ -103,7 +103,7 @@ namespace onart {
 	}
 
 	bool VkPlayer::init() {
-		return 
+		return
 			createInstance()
 			&& createWindow()
 			&& findPhysicalDevice()
@@ -201,7 +201,7 @@ namespace onart {
 		VkInstanceCreateInfo info{};	// 일단 모두 0으로 초기화함
 		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// 고정값
 		info.pApplicationInfo = &ainfo;
-		
+
 		std::vector<std::string> names = getNeededInstanceExtensions();
 		std::vector<const char*> pnames(names.size());
 		for (size_t i = 0; i < pnames.size(); i++) { pnames[i] = names[i].c_str(); }
@@ -218,7 +218,7 @@ namespace onart {
 		return false;
 	}
 
-	void VkPlayer::destroyInstance() {		
+	void VkPlayer::destroyInstance() {
 		vkDestroyInstance(instance, nullptr);
 	}
 
@@ -236,7 +236,7 @@ namespace onart {
 			vkGetPhysicalDeviceFeatures(cards[i], &features);
 			if (!checkDeviceExtension(cards[i])) continue;
 			PhysicalDevice pd = setQueueFamily(cards[i]);
-			if (pd.card) { 
+			if (pd.card) {
 				physicalDevice = pd;
 				extSupported[(size_t)OptionalEXT::ANISOTROPIC] = features.samplerAnisotropy;
 				minUniformBufferOffset = properties.limits.minUniformBufferOffsetAlignment;
@@ -247,7 +247,7 @@ namespace onart {
 		return false;
 	}
 
-	
+
 	VkPlayer::PhysicalDevice VkPlayer::setQueueFamily(VkPhysicalDevice card) {
 		uint32_t qfcount;
 		PhysicalDevice ret;
@@ -258,7 +258,7 @@ namespace onart {
 		for (uint32_t i = 0; i < qfcount; i++) {
 			VkBool32 supported;
 			vkGetPhysicalDeviceSurfaceSupportKHR(card, i, surface, &supported);
-			if (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) { 
+			if (qfs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 				if (supported) return { card,i,i };
 				ret.graphicsFamily = i; gq = true;
 			}
@@ -283,7 +283,7 @@ namespace onart {
 		qInfo[1].queueFamilyIndex = physicalDevice.presentFamily;
 		qInfo[1].queueCount = 1;
 		qInfo[1].pQueuePriorities = &queuePriority;
-		
+
 		VkPhysicalDeviceFeatures features{};
 		features.samplerAnisotropy = hasExt(OptionalEXT::ANISOTROPIC);
 
@@ -296,7 +296,7 @@ namespace onart {
 		info.enabledExtensionCount = DEVICE_EXT_COUNT;
 
 		bool result = vkCreateDevice(physicalDevice.card, &info, nullptr, &device) == VK_SUCCESS;
-		if (result) { 
+		if (result) {
 			vkGetDeviceQueue(device, physicalDevice.graphicsFamily, 0, &graphicsQueue);
 			vkGetDeviceQueue(device, physicalDevice.presentFamily, 0, &presentQueue);
 		}
@@ -313,7 +313,7 @@ namespace onart {
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		info.queueFamilyIndex = physicalDevice.graphicsFamily;
 		info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		
+
 		if (vkCreateCommandPool(device, &info, nullptr, &commandPool) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create graphics/transfer command pool\n");
 			return false;
@@ -323,14 +323,14 @@ namespace onart {
 		bufferInfo.commandPool = commandPool;
 		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		bufferInfo.commandBufferCount = COMMANDBUFFER_COUNT;
-		
+
 		if (vkAllocateCommandBuffers(device, &bufferInfo, commandBuffers) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create graphics/transfer command buffers\n");
 			return false;
 		}
 		return true;
 	}
-	
+
 	void VkPlayer::destroyCommandPool() {
 		vkFreeCommandBuffers(device, commandPool, COMMANDBUFFER_COUNT, commandBuffers);
 		vkDestroyCommandPool(device, commandPool, nullptr);
@@ -404,7 +404,7 @@ namespace onart {
 		VkSwapchainCreateInfoKHR info{};
 		info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		info.surface = surface;
-		
+
 		info.minImageCount = caps.minImageCount > caps.maxImageCount - 1 ? caps.minImageCount + 1 : caps.maxImageCount;
 		info.imageFormat = swapchainImageFormat = sf.format;
 		info.imageColorSpace = sf.colorSpace;
@@ -473,7 +473,7 @@ namespace onart {
 		for (size_t i = 0; i < swapchainImageViews.size(); i++) {
 			info.image = images[i];
 			if (vkCreateImageView(device, &info, nullptr, &swapchainImageViews[i]) != VK_SUCCESS) {
-				fprintf(stderr,"Failed to create image views\n");
+				fprintf(stderr, "Failed to create image views\n");
 				return false;
 			}
 		}
@@ -697,20 +697,20 @@ namespace onart {
 		vattrs[1].format = VK_FORMAT_R32G32_SFLOAT;
 		vattrs[1].location = 1;
 		vattrs[1].offset = offsetof(Vertex, tc);
-		
+
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 1;
 		vertexInputInfo.pVertexBindingDescriptions = &vbind;
 		vertexInputInfo.vertexAttributeDescriptionCount = 2;
 		vertexInputInfo.pVertexAttributeDescriptions = vattrs;
-		
+
 		// fixed function: 정점 모으기
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3개씩 끊어 삼각형
 		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff 혹은 0xffffffff 인덱스로 스트립 끊기 가능 여부
-		
+
 		// fixed function: 뷰포트, 시저 (뷰포트: cvv상 그림이 그려질 최종 직사각형, 시저: 스왑체인 이미지에서 그려지는 것을 허용할 부분)
 		// ** 뷰포트는 런타임에 조정 가능 ** 
 		VkViewport viewport{};
@@ -745,7 +745,7 @@ namespace onart {
 		rasterizerInfo.depthBiasConstantFactor = 0.0f;
 		rasterizerInfo.depthBiasClamp = 0.0f;
 		rasterizerInfo.depthBiasSlopeFactor = 0.0f;
-		
+
 		// fixed function: 멀티샘플링 (현재는 공란으로)
 		// 안티에일리어싱에 사용하는 경우에 대하여 매개변수 수용할 필요가 있을듯
 		VkPipelineMultisampleStateCreateInfo msInfo{};
@@ -770,7 +770,7 @@ namespace onart {
 		depthStencilInfo.front.depthFailOp = VkStencilOp::VK_STENCIL_OP_KEEP;
 		depthStencilInfo.front.passOp = VkStencilOp::VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 		depthStencilInfo.front.reference = 0x00;
-		
+
 		// fixed function: 색 블렌딩
 		// 블렌딩은 대체로 SRC_ALPHA, 1-SRC_ALPHA로 하니 반투명이 없을 거라면 성능을 위해 끄는 정도?
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
@@ -940,15 +940,15 @@ namespace onart {
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		info.size = sizeof(ar);
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		
+
 		VkBuffer vb;
 		VkDeviceMemory vbmem;
 
 		if (vkCreateBuffer(device, &info, nullptr, &vb) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to create fixed vertex buffer\n");
+			fprintf(stderr, "Failed to create fixed vertex buffer\n");
 			return false;
 		}
-		
+
 		VkMemoryRequirements mreq;
 		vkGetBufferMemoryRequirements(device, vb, &mreq);
 
@@ -998,7 +998,7 @@ namespace onart {
 
 		VkCommandBuffer copyBuffer;
 		if (vkAllocateCommandBuffers(device, &cmdInfo, &copyBuffer) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to allocate command buffer for copying vertex buffer\n");
+			fprintf(stderr, "Failed to allocate command buffer for copying vertex buffer\n");
 			return false;
 		}
 		VkCommandBufferBeginInfo copyBegin{};
@@ -1049,8 +1049,8 @@ namespace onart {
 		float st = sinf(tp), ct = cosf(tp);
 		float asp = (float)rheight / rwid;
 		float rotation[16] = {
-			ct*asp,st,0,0,
-			-st*asp,ct,0,0,
+			ct * asp,st,0,0,
+			-st * asp,ct,0,0,
 			0,0,1,0,
 			0,0,0,1
 		};
@@ -1119,13 +1119,16 @@ namespace onart {
 		VkDescriptorSet bindDs[] = { ubset[commandBufferNumber],samplerSet[0] };
 		uint32_t dynamicOffs[] = { 0,0 };
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
-		float clr[5] = { 1.0f,0,0,1,0.0f };
-		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, clr);
+		struct {
+			float clr[4] = { 1.0f,0,0,1 };
+			int idx = 0;
+		}psh;
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, &psh);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
 		dynamicOffs[0] = minUniformBufferOffset;
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
-		clr[1] = 1.0f; clr[4] = 1.0f;
-		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, clr);
+		psh.clr[1] = 1.0f; psh.idx = 1;
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, &psh);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline1);
 		vkCmdSetScissor(commandBuffers[commandBufferNumber], 0, 1, &scissor);
@@ -1158,7 +1161,7 @@ namespace onart {
 		presentInfo.pImageIndices = &imgIndex;
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = &presentSp[commandBufferNumber];
-		
+
 		if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS) {
 			fprintf(stderr, "Fail 5\n");
 			return;
@@ -1262,16 +1265,16 @@ namespace onart {
 
 		samplerBinding.binding = 1;
 		samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		samplerBinding.descriptorCount = 1;
+		samplerBinding.descriptorCount = 2;
 		samplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		
+
 		VkDescriptorSetLayoutCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		info.bindingCount = sizeof(dsBindings) / sizeof(dsBindings[0]);
 		info.pBindings = dsBindings;
-		
+
 		if (vkCreateDescriptorSetLayout(device, &info, nullptr, &ubds) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to create descriptor set layout for uniform buffer\n");
+			fprintf(stderr, "Failed to create descriptor set layout for uniform buffer\n");
 			return false;
 		}
 
@@ -1285,7 +1288,7 @@ namespace onart {
 		ubsize.descriptorCount = COMMANDBUFFER_COUNT;
 
 		smsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		smsize.descriptorCount = sizeof(samplerSet) / sizeof(samplerSet[0]);
+		smsize.descriptorCount = 2;
 
 		VkDescriptorPoolCreateInfo dpinfo{};
 		dpinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1295,21 +1298,21 @@ namespace onart {
 		for (int i = 0; i < dpinfo.poolSizeCount; i++) {
 			dpinfo.maxSets += dpinfo.pPoolSizes[i].descriptorCount;
 		}
-		
+
 		if (vkCreateDescriptorPool(device, &dpinfo, nullptr, &ubpool) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to create descriptor pool\n");
+			fprintf(stderr, "Failed to create descriptor pool\n");
 			return false;
 		}
-		
+
 		std::vector<VkDescriptorSetLayout> layouts(COMMANDBUFFER_COUNT, ubds);
 		VkDescriptorSetAllocateInfo setInfo{};
 		setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		setInfo.descriptorPool = ubpool;
 		setInfo.descriptorSetCount = COMMANDBUFFER_COUNT;
 		setInfo.pSetLayouts = layouts.data();
-		
+
 		if (vkAllocateDescriptorSets(device, &setInfo, ubset) != VK_SUCCESS) {
-			fprintf(stderr,"Failed to allocate descriptor set\n");
+			fprintf(stderr, "Failed to allocate descriptor set\n");
 			return false;
 		}
 		VkDeviceSize dynamicAlignment = 256;
@@ -1318,7 +1321,7 @@ namespace onart {
 			bufferInfo.buffer = ub[i];
 			bufferInfo.offset = 0;
 			bufferInfo.range = dynamicAlignment;
-			
+
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrite.dstSet = ubset[i];
@@ -1329,7 +1332,7 @@ namespace onart {
 			descriptorWrite.pBufferInfo = &bufferInfo;
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
-		
+
 		std::vector<VkDescriptorSetLayout> samplerLayouts(sizeof(samplerSet) / sizeof(samplerSet[0]), ubds);
 		setInfo.descriptorSetCount = samplerLayouts.size();
 		setInfo.pSetLayouts = samplerLayouts.data();
@@ -1338,10 +1341,13 @@ namespace onart {
 			return false;
 		}
 		for (size_t i = 0; i < sizeof(samplerSet) / sizeof(samplerSet[0]); i++) {
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageView = texview0;
-			imageInfo.sampler = sampler0;
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			VkDescriptorImageInfo imageInfo[2]={};
+			imageInfo[0].imageView = texview0;
+			imageInfo[0].sampler = sampler0;
+			imageInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo[1].imageView = texview1;
+			imageInfo[1].sampler = sampler0;
+			imageInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 			VkWriteDescriptorSet descriptorWrite{};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1349,8 +1355,8 @@ namespace onart {
 			descriptorWrite.dstBinding = 1;
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pImageInfo = &imageInfo;
+			descriptorWrite.descriptorCount = 2;
+			descriptorWrite.pImageInfo = imageInfo;
 			vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 		}
 
@@ -1411,7 +1417,7 @@ namespace onart {
 
 	bool VkPlayer::createFixedIndexBuffer() {
 		uint16_t ar[] = { 0,1,2,0,2,3 };
-		
+
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -1628,14 +1634,8 @@ namespace onart {
 	bool VkPlayer::createTex0() {
 		int w, h, ch;
 		unsigned char* pix = readImageFile("no1.png", &w, &h, &ch);
-		unsigned char* pix2 = readImageFile("no2.png", &w, &h, &ch);
 		if (!pix) {
 			fprintf(stderr, "Failed to read image file\n");
-			return false;
-		}
-		if (!pix2) {
-			fprintf(stderr, "Failed to read image file\n");
-			free(pix);
 			return false;
 		}
 
@@ -1646,7 +1646,7 @@ namespace onart {
 		imgInfo.extent.height = (uint32_t)h;
 		imgInfo.extent.depth = 1;
 		imgInfo.mipLevels = 1;
-		imgInfo.arrayLayers = 2;
+		imgInfo.arrayLayers = 1;
 		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1681,7 +1681,7 @@ namespace onart {
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		info.size = static_cast<VkDeviceSize>(w) * h * 4 * 2;
+		info.size = static_cast<VkDeviceSize>(w) * h * 4;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer temp;
@@ -1708,10 +1708,8 @@ namespace onart {
 			free(pix);
 			return false;
 		}
-		memcpy(data, pix, info.size / 2);
-		memcpy((char*)data + info.size / 2, pix2, info.size / 2);
+		memcpy(data, pix, info.size);
 		free(pix);
-		free(pix2);
 		vkUnmapMemory(device, tempMem);
 		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to bind buffer object and memory\n");
@@ -1736,28 +1734,28 @@ namespace onart {
 			fprintf(stderr, "Failed to begin command buffer for copying texture image\n");
 			return false;
 		}
-		
+
 		VkImageMemoryBarrier barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		barrier.image = tex0;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.layerCount = 2;
+		barrier.subresourceRange.layerCount = 1;
 		barrier.subresourceRange.levelCount = 1;
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-		
+
 		VkBufferImageCopy copyRegion{};
 		copyRegion.bufferRowLength = 0;
 		copyRegion.bufferImageHeight = 0;
 		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		copyRegion.imageSubresource.mipLevel = 0;
 		copyRegion.imageSubresource.baseArrayLayer = 0;
-		copyRegion.imageSubresource.layerCount = 2;
+		copyRegion.imageSubresource.layerCount = 1;
 		copyRegion.imageOffset = { 0,0,0 };
 		copyRegion.imageExtent = imgInfo.extent;
 
@@ -1768,7 +1766,7 @@ namespace onart {
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-		
+
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
@@ -1788,16 +1786,154 @@ namespace onart {
 		VkImageViewCreateInfo viewInfo{};
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewInfo.image = tex0;
-		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.layerCount = 2;
+		viewInfo.subresourceRange.layerCount = 1;
 		viewInfo.subresourceRange.levelCount = 1;
 		viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY };
 
 		if (vkCreateImageView(device, &viewInfo, nullptr, &texview0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create image view for texture\n");
+			return false;
+		}
+
+		// 2번째
+		pix = readImageFile("no2.png", &w, &h, &ch);
+		if (!pix) {
+			fprintf(stderr, "Failed to read image file\n");
+			return false;
+		}
+
+		imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imgInfo.imageType = VK_IMAGE_TYPE_2D;
+		imgInfo.extent.width = (uint32_t)w;
+		imgInfo.extent.height = (uint32_t)h;
+		imgInfo.extent.depth = 1;
+		imgInfo.mipLevels = 1;
+		imgInfo.arrayLayers = 1;
+		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		imgInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+		if (vkCreateImage(device, &imgInfo, nullptr, &tex1) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create texture image object\n");
+			free(pix);
+			return false;
+		}
+
+		vkGetImageMemoryRequirements(device, tex1, &mreq);
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &texmem1) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for texture image\n");
+			free(pix);
+			return false;
+		}
+		if (vkBindImageMemory(device, tex1, texmem1, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind texture image and device memory\n");
+			free(pix);
+			return false;
+		}
+
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		info.size = static_cast<VkDeviceSize>(w) * h * 4;
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(device, &info, nullptr, &temp) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to create temporary buffer for texture image\n");
+			free(pix);
+			return false;
+		}
+
+		vkGetBufferMemoryRequirements(device, temp, &mreq);
+
+		allocInfo.allocationSize = mreq.size;
+		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
+
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &tempMem) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to allocate memory for temporary buffer for texture image\n");
+			free(pix);
+			return false;
+		}
+
+		if (vkMapMemory(device, tempMem, 0, info.size, 0, &data) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to map to allocated memory\n");
+			free(pix);
+			return false;
+		}
+		memcpy(data, pix, info.size);
+		free(pix);
+		vkUnmapMemory(device, tempMem);
+		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to bind buffer object and memory\n");
+			return false;
+		}
+
+		copyBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		copyBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		if (vkBeginCommandBuffer(copyBuffer, &copyBegin) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to begin command buffer for copying texture image\n");
+			return false;
+		}
+
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.image = tex1;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+		copyRegion.bufferRowLength = 0;
+		copyRegion.bufferImageHeight = 0;
+		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		copyRegion.imageSubresource.mipLevel = 0;
+		copyRegion.imageSubresource.baseArrayLayer = 0;
+		copyRegion.imageSubresource.layerCount = 1;
+		copyRegion.imageOffset = { 0,0,0 };
+		copyRegion.imageExtent = imgInfo.extent;
+
+		vkCmdCopyBufferToImage(copyBuffer, temp, tex1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &copyBuffer;
+		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to end command buffer for copying texture data\n");
+			return false;
+		}
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			fprintf(stderr, "Failed to submit command buffer for copying vertex buffer\n");
+			return false;
+		}
+		vkQueueWaitIdle(graphicsQueue);
+		vkFreeCommandBuffers(device, commandPool, 1, &copyBuffer);
+		vkDestroyBuffer(device, temp, nullptr);
+		vkFreeMemory(device, tempMem, nullptr);
+
+		viewInfo.image = tex1;
+
+		if (vkCreateImageView(device, &viewInfo, nullptr, &texview1) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create image view for texture\n");
 			return false;
 		}
@@ -1807,7 +1943,10 @@ namespace onart {
 
 	void VkPlayer::destroyTex0() {
 		vkDestroyImageView(device, texview0, nullptr);
+		vkDestroyImageView(device, texview1, nullptr);
 		vkFreeMemory(device, texmem0, nullptr);
+		vkFreeMemory(device, texmem1, nullptr);
+		vkDestroyImage(device, tex1, nullptr);
 		vkDestroyImage(device, tex0, nullptr);
 	}
 
@@ -1952,7 +2091,7 @@ namespace onart {
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &sp1layout;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout1);
-		
+
 		// 파이프라인 생성
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

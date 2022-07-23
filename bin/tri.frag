@@ -7,11 +7,11 @@ layout(location = 0) out vec4 outColor;
 
 layout(std140, push_constant) uniform ui{
     vec4 color;
-    float tIndex;
+    int tIndex;
 };
 
-layout(set = 1, binding = 1) uniform sampler2DArray tex;
+layout(set = 1, binding = 1) uniform sampler2D tex[2];
 
 void main() {
-    outColor = color*texture(tex, vec3(texc,tIndex));
+    outColor = color*texture(tex[tIndex], texc);
 }

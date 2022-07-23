@@ -75,9 +75,9 @@ namespace onart {
 		static VkBuffer vb, ib;						// 일시적인 고정 정점 버퍼
 		static VkDeviceMemory vbmem, ibmem;			// vb 메모리 핸들
 
-		static VkImage tex0;
-		static VkDeviceMemory texmem0;
-		static VkImageView texview0;
+		static VkImage tex0, tex1;
+		static VkDeviceMemory texmem0, texmem1;
+		static VkImageView texview0, texview1;
 		static VkSampler sampler0;
 		static VkDescriptorSet samplerSet[];
 
