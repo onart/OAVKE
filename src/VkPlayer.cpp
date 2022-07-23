@@ -66,11 +66,11 @@ namespace onart {
 	VkBuffer VkPlayer::vb = nullptr, VkPlayer::ib = nullptr;
 	VkDeviceMemory VkPlayer::vbmem = nullptr, VkPlayer::ibmem = nullptr;
 
-	VkImage VkPlayer::tex0 = nullptr, VkPlayer::tex1 = nullptr;
-	VkImageView VkPlayer::texview0 = nullptr, VkPlayer::texview1 = nullptr;
-	VkDeviceMemory VkPlayer::texmem0 = nullptr, VkPlayer::texmem1 = nullptr;
+	VkImage VkPlayer::tex0 = nullptr;
+	VkImageView VkPlayer::texview0 = nullptr;
+	VkDeviceMemory VkPlayer::texmem0 = nullptr;
 	VkSampler VkPlayer::sampler0 = nullptr;
-	VkDescriptorSet VkPlayer::samplerSet[2] = {};
+	VkDescriptorSet VkPlayer::samplerSet[1] = {};
 
 	VkDescriptorSetLayout VkPlayer::sp1layout = nullptr;
 	VkDescriptorPool VkPlayer::sp1pool = nullptr;
@@ -802,7 +802,7 @@ namespace onart {
 
 		VkPushConstantRange pushRange{};
 		pushRange.offset = 0;
-		pushRange.size = 16;
+		pushRange.size = 20;
 		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		// fixed function: 파이프라인 레이아웃: uniform 및 push 변수에 관한 것
@@ -1119,13 +1119,13 @@ namespace onart {
 		VkDescriptorSet bindDs[] = { ubset[commandBufferNumber],samplerSet[0] };
 		uint32_t dynamicOffs[] = { 0,0 };
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
-		float clr[4] = { 1.0f,0,0,1 };
-		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16, clr);
+		float clr[5] = { 1.0f,0,0,1,0.0f };
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 0, 0);
 		dynamicOffs[0] = minUniformBufferOffset;
-		bindDs[1] = samplerSet[1];
 		vkCmdBindDescriptorSets(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout0, 0, 2, bindDs, sizeof(dynamicOffs) / sizeof(dynamicOffs[0]), dynamicOffs);
-		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 4, 4, clr);
+		clr[1] = 1.0f; clr[4] = 1.0f;
+		vkCmdPushConstants(commandBuffers[commandBufferNumber], pipelineLayout0, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 20, clr);
 		vkCmdDrawIndexed(commandBuffers[commandBufferNumber], 6, 1, 0, 4, 0);
 		vkCmdBindPipeline(commandBuffers[commandBufferNumber], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline1);
 		vkCmdSetScissor(commandBuffers[commandBufferNumber], 0, 1, &scissor);
@@ -1339,8 +1339,7 @@ namespace onart {
 		}
 		for (size_t i = 0; i < sizeof(samplerSet) / sizeof(samplerSet[0]); i++) {
 			VkDescriptorImageInfo imageInfo{};
-			if (i == 0) { imageInfo.imageView = texview0; }
-			else if (i == 1) { imageInfo.imageView = texview1; }
+			imageInfo.imageView = texview0;
 			imageInfo.sampler = sampler0;
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1629,8 +1628,14 @@ namespace onart {
 	bool VkPlayer::createTex0() {
 		int w, h, ch;
 		unsigned char* pix = readImageFile("no1.png", &w, &h, &ch);
+		unsigned char* pix2 = readImageFile("no2.png", &w, &h, &ch);
 		if (!pix) {
 			fprintf(stderr, "Failed to read image file\n");
+			return false;
+		}
+		if (!pix2) {
+			fprintf(stderr, "Failed to read image file\n");
+			free(pix);
 			return false;
 		}
 
@@ -1641,7 +1646,7 @@ namespace onart {
 		imgInfo.extent.height = (uint32_t)h;
 		imgInfo.extent.depth = 1;
 		imgInfo.mipLevels = 1;
-		imgInfo.arrayLayers = 1;
+		imgInfo.arrayLayers = 2;
 		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1676,7 +1681,7 @@ namespace onart {
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		info.size = static_cast<VkDeviceSize>(w) * h * 4;
+		info.size = static_cast<VkDeviceSize>(w) * h * 4 * 2;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer temp;
@@ -1703,8 +1708,10 @@ namespace onart {
 			free(pix);
 			return false;
 		}
-		memcpy(data, pix, info.size);
+		memcpy(data, pix, info.size / 2);
+		memcpy((char*)data + info.size / 2, pix2, info.size / 2);
 		free(pix);
+		free(pix2);
 		vkUnmapMemory(device, tempMem);
 		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to bind buffer object and memory\n");
@@ -1736,7 +1743,7 @@ namespace onart {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.layerCount = 2;
 		barrier.subresourceRange.levelCount = 1;
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -1750,7 +1757,7 @@ namespace onart {
 		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		copyRegion.imageSubresource.mipLevel = 0;
 		copyRegion.imageSubresource.baseArrayLayer = 0;
-		copyRegion.imageSubresource.layerCount = 1;
+		copyRegion.imageSubresource.layerCount = 2;
 		copyRegion.imageOffset = { 0,0,0 };
 		copyRegion.imageExtent = imgInfo.extent;
 
@@ -1781,154 +1788,16 @@ namespace onart {
 		VkImageViewCreateInfo viewInfo{};
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewInfo.image = tex0;
-		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.layerCount = 1;
+		viewInfo.subresourceRange.layerCount = 2;
 		viewInfo.subresourceRange.levelCount = 1;
 		viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY };
 
 		if (vkCreateImageView(device, &viewInfo, nullptr, &texview0) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to create image view for texture\n");
-			return false;
-		}
-
-		// 2번째
-		pix = readImageFile("no2.png", &w, &h, &ch);
-		if (!pix) {
-			fprintf(stderr, "Failed to read image file\n");
-			return false;
-		}
-
-		imgInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imgInfo.imageType = VK_IMAGE_TYPE_2D;
-		imgInfo.extent.width = (uint32_t)w;
-		imgInfo.extent.height = (uint32_t)h;
-		imgInfo.extent.depth = 1;
-		imgInfo.mipLevels = 1;
-		imgInfo.arrayLayers = 1;
-		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-		imgInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-
-		if (vkCreateImage(device, &imgInfo, nullptr, &tex1) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to create texture image object\n");
-			free(pix);
-			return false;
-		}
-
-		vkGetImageMemoryRequirements(device, tex1, &mreq);
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = mreq.size;
-		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice.card);
-
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &texmem1) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to allocate memory for texture image\n");
-			free(pix);
-			return false;
-		}
-		if (vkBindImageMemory(device, tex1, texmem1, 0) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to bind texture image and device memory\n");
-			free(pix);
-			return false;
-		}
-
-		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		info.size = static_cast<VkDeviceSize>(w) * h * 4;
-		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		if (vkCreateBuffer(device, &info, nullptr, &temp) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to create temporary buffer for texture image\n");
-			free(pix);
-			return false;
-		}
-
-		vkGetBufferMemoryRequirements(device, temp, &mreq);
-
-		allocInfo.allocationSize = mreq.size;
-		allocInfo.memoryTypeIndex = findMemorytype(mreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, physicalDevice.card);
-
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &tempMem) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to allocate memory for temporary buffer for texture image\n");
-			free(pix);
-			return false;
-		}
-
-		if (vkMapMemory(device, tempMem, 0, info.size, 0, &data) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to map to allocated memory\n");
-			free(pix);
-			return false;
-		}
-		memcpy(data, pix, info.size);
-		free(pix);
-		vkUnmapMemory(device, tempMem);
-		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to bind buffer object and memory\n");
-			return false;
-		}
-
-		copyBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		copyBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		if (vkBeginCommandBuffer(copyBuffer, &copyBegin) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to begin command buffer for copying texture image\n");
-			return false;
-		}
-
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.image = tex1;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.layerCount = 1;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-		copyRegion.bufferRowLength = 0;
-		copyRegion.bufferImageHeight = 0;
-		copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		copyRegion.imageSubresource.mipLevel = 0;
-		copyRegion.imageSubresource.baseArrayLayer = 0;
-		copyRegion.imageSubresource.layerCount = 1;
-		copyRegion.imageOffset = { 0,0,0 };
-		copyRegion.imageExtent = imgInfo.extent;
-
-		vkCmdCopyBufferToImage(copyBuffer, temp, tex1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		vkCmdPipelineBarrier(copyBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &copyBuffer;
-		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to end command buffer for copying texture data\n");
-			return false;
-		}
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-			fprintf(stderr, "Failed to submit command buffer for copying vertex buffer\n");
-			return false;
-		}
-		vkQueueWaitIdle(graphicsQueue);
-		vkFreeCommandBuffers(device, commandPool, 1, &copyBuffer);
-		vkDestroyBuffer(device, temp, nullptr);
-		vkFreeMemory(device, tempMem, nullptr);
-
-		viewInfo.image = tex1;
-
-		if (vkCreateImageView(device, &viewInfo, nullptr, &texview1) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create image view for texture\n");
 			return false;
 		}
@@ -1938,10 +1807,7 @@ namespace onart {
 
 	void VkPlayer::destroyTex0() {
 		vkDestroyImageView(device, texview0, nullptr);
-		vkDestroyImageView(device, texview1, nullptr);
 		vkFreeMemory(device, texmem0, nullptr);
-		vkFreeMemory(device, texmem1, nullptr);
-		vkDestroyImage(device, tex1, nullptr);
 		vkDestroyImage(device, tex0, nullptr);
 	}
 
