@@ -21,38 +21,38 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 namespace onart {
 	class VkPlayer {
 	public:
-		// VulkanÀ» ÃÊ±âÈ­ÇÏ°í, ½ÃÀÛÇÕ´Ï´Ù.
+		// Vulkanï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½Ï°ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void start();
-		// ¸ðµç °ÍÀ» Á¤»óÀûÀ¸·Î ¸®ÅÏÇÏ°í Á¾·áÇÕ´Ï´Ù. Ã¢À» ´ÝÀº °Í°ú °°Àº µ¿ÀÛÀÔ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½. Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ô´Ï´ï¿½.
 		static void exit();
-	private:	// ¸â¹ö
-		static VkInstance instance;					// ÀÎ½ºÅÏ½º
+	private:	// ï¿½ï¿½ï¿½
+		static VkInstance instance;					// ï¿½Î½ï¿½ï¿½Ï½ï¿½
 		static struct PhysicalDevice {
 			VkPhysicalDevice card;
 			uint32_t graphicsFamily;
 			uint32_t presentFamily;
-		}physicalDevice;							// ¹°¸® ÀåÄ¡
-		static VkDevice device;						// °¡»ó ÀåÄ¡
+		}physicalDevice;							// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
+		static VkDevice device;						// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
 		static VkQueue graphicsQueue, presentQueue;	// Å¥
-		static VkCommandPool commandPool;			// ¸í·ÉÇ®
-		static VkCommandBuffer commandBuffers[];	// ¸í·É ¹öÆÛ
-		static int commandBufferNumber;				// Áö±Ý ¾µ ¸í·É ¹öÆÛ ¹øÈ£
-		static GLFWwindow* window;					// ÀÀ¿ë Ã¢
-		static uint32_t width, height;				// Ã¢ Å©±â
-		static VkSurfaceKHR surface;				// Ã¢ Ç¥¸é
-		static VkSwapchainKHR swapchain;			// ½º¿Ò Ã¼ÀÎ
-		static VkExtent2D swapchainExtent;			// ½ÇÁ¦ ¸¸µé¾îÁø ½º¿ÒÃ¼ÀÎ ÀÌ¹ÌÁö Å©±â
-		static std::vector<VkImageView> swapchainImageViews;	// ½º¿Ò Ã¼ÀÎ ÀÌ¹ÌÁö ºä
-		static VkFormat swapchainImageFormat;		// ½º¿Ò Ã¼ÀÎ ÀÌ¹ÌÁöÀÇ Çü½Ä
-		static VkRenderPass renderPass0;			// ´Ü¼ø ·»´õÆÐ½º
-		static std::vector<VkFramebuffer> endFramebuffers;	// ½º¿ÒÃ¼ÀÎ ÀÌ¹ÌÁö¸¦ ÂüÁ¶ÇÏ´Â ÇÁ·¹ÀÓ¹öÆÛ
-		static VkPipeline pipeline0;				// ´Ü¼ø ·»´õ¸µ(º¯È¯ - ÅØ½ºÃ³,¶óÀÌÆÃ ÇÏ°í ³¡) ÆÄÀÌÇÁ¶óÀÎ
-		static VkPipelineLayout pipelineLayout0;	// 0¹øÀÇ ·¹ÀÌ¾Æ¿ô
-		static VkSemaphore fixedSp[], presentSp[];	// °íÁ¤ ¼¼¸¶Æ÷¾î
-		static VkFence bufferFence[];				// ¹öÆÛ Ææ½º
-		static VkImage dsImage;						// ±íÀÌ/½ºÅÙ½Ç ÀÌ¹ÌÁö
-		static VkImageView dsImageView;				// dsImageÀÇ ºä
-		static VkDeviceMemory dsmem;				// dsImage¸¦ À§ÇÑ ¸Þ¸ð¸®
+		static VkCommandPool commandPool;			// ï¿½ï¿½ï¿½ï¿½Ç®
+		static VkCommandBuffer commandBuffers[];	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		static int commandBufferNumber;				// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£
+		static GLFWwindow* window;					// ï¿½ï¿½ï¿½ï¿½ Ã¢
+		static uint32_t width, height;				// Ã¢ Å©ï¿½ï¿½
+		static VkSurfaceKHR surface;				// Ã¢ Ç¥ï¿½ï¿½
+		static VkSwapchainKHR swapchain;			// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½
+		static VkExtent2D swapchainExtent;			// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ Å©ï¿½ï¿½
+		static std::vector<VkImageView> swapchainImageViews;	// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ï¿½
+		static VkFormat swapchainImageFormat;		// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		static VkRenderPass renderPass0;			// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ð½ï¿½
+		static std::vector<VkFramebuffer> endFramebuffers;	// ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½ï¿½
+		static VkPipeline pipeline0;				// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½È¯ - ï¿½Ø½ï¿½Ã³,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï°ï¿½ ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		static VkPipelineLayout pipelineLayout0;	// 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾Æ¿ï¿½
+		static VkSemaphore fixedSp[], presentSp[];	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		static VkFence bufferFence[];				// ï¿½ï¿½ï¿½ï¿½ ï¿½æ½º
+		static VkImage dsImage;						// ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½Ù½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½
+		static VkImageView dsImageView;				// dsImageï¿½ï¿½ ï¿½ï¿½
+		static VkDeviceMemory dsmem;				// dsImageï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ï¿½
 		static VkFormat dsImageFormat;
 
 		static VkImage middleImage;
@@ -65,15 +65,15 @@ namespace onart {
 		static VkDescriptorPool sp1pool;
 		static VkDescriptorSet sp1set;
 
-		static VkBuffer ub[];						// °øÀ¯ ¹öÆÛ
-		static VkDeviceMemory ubmem[];				// °øÀ¯ ¹öÆÛ ¸Þ¸ð¸® ÇÚµé
-		static void* ubmap[];						// °øÀ¯ ¹öÆÛ ¸Þ¸ð¸® ¸Ê °øÀ¯ ÁöÁ¡
+		static VkBuffer ub[];						// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		static VkDeviceMemory ubmem[];				// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ï¿½ ï¿½Úµï¿½
+		static void* ubmap[];						// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		static VkDescriptorSetLayout ubds;			// 
-		static VkDescriptorPool ubpool;				// µð½ºÅ©¸³ÅÍ Ç®
-		static VkDescriptorSet ubset[];				// µð½ºÅ©¸³ÅÍ ÁýÇÕ
+		static VkDescriptorPool ubpool;				// ï¿½ï¿½Å©ï¿½ï¿½ï¿½ï¿½ Ç®
+		static VkDescriptorSet ubset[];				// ï¿½ï¿½Å©ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-		static VkBuffer vb, ib;						// ÀÏ½ÃÀûÀÎ °íÁ¤ Á¤Á¡ ¹öÆÛ
-		static VkDeviceMemory vbmem, ibmem;			// vb ¸Þ¸ð¸® ÇÚµé
+		static VkBuffer vb, ib;						// ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		static VkDeviceMemory vbmem, ibmem;			// vb ï¿½Þ¸ï¿½ ï¿½Úµï¿½
 
 		static VkImage tex0, tex1;
 		static VkDeviceMemory texmem0, texmem1;
@@ -86,128 +86,128 @@ namespace onart {
 
 		static VmaAllocator allocator;
 
-		static int frame;							// ÇÁ·¹ÀÓ ¹øÈ£(1ºÎÅÍ ½ÃÀÛ)
-		static float dt, tp, idt;					// ÇöÀç ÇÁ·¹ÀÓ°ú ÀÌÀü ÇÁ·¹ÀÓ »çÀÌÀÇ °£°Ý(ÃÊ) / ÇÁ·¹ÀÓ ½ÃÀÛ ½ÃÁ¡(ÃÊ) / dtÀÇ ¿ª¼ö
+		static int frame;							// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£(1ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
+		static float dt, tp, idt;					// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½) / ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½) / dtï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		static bool resizing, shouldRecreateSwapchain;
 		static VkDeviceSize minUniformBufferOffset;
-	private:	// ÇÔ¼ö
-		// GLFW, VulkanÀ» ºñ·ÔÇÏ¿© ÇÊ¿äÇÑ ¸ðµç °ÍÀ» ÃÊ±âÈ­ÇÕ´Ï´Ù.
+	private:	// ï¿½Ô¼ï¿½
+		// GLFW, Vulkanï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½Õ´Ï´ï¿½.
 		static bool init();
-		// ¾÷µ¥ÀÌÆ®, ·»´õ¸µ ¸í·ÉÀ» ¼öÇàÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void mainLoop();
-		// Á¾·á Àü ÇÒ´çÇÑ ¸ðµç ÀÚ¿øÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ò´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void finalize();
-		// vulkan ÀÎ½ºÅÏ½º¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// vulkan ï¿½Î½ï¿½ï¿½Ï½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createInstance();
-		// vulkan ÀÎ½ºÅÏ½º¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// vulkan ï¿½Î½ï¿½ï¿½Ï½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyInstance();
-		// °¡¿ë ¹°¸® ÀåÄ¡¸¦ Ã£½À´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ Ã£ï¿½ï¿½ï¿½Ï´ï¿½.
 		static bool findPhysicalDevice();
-		// ÁÖ¾îÁø ¹°¸® ÀåÄ¡¿¡ ´ëÇÏ¿© ±×·¡ÇÈ½º, Àü¼Û Å¥°¡ °¡´ÉÇÏ´Ù¸é ÇÔ²² ¹­¾î ¸®ÅÏÇÕ´Ï´Ù.
+		// ï¿½Ö¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½×·ï¿½ï¿½È½ï¿½, ï¿½ï¿½ï¿½ï¿½ Å¥ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´Ù¸ï¿½ ï¿½Ô²ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static PhysicalDevice setQueueFamily(VkPhysicalDevice card);
-		// °¡»ó(logical) ÀåÄ¡¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½(logical) ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createDevice();
-		// °¡»ó ÀåÄ¡¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyDevice();
-		// ¸í·É Ç®°ú ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createCommandPool();
-		// ¸í·É Ç®°ú ¹öÆÛ¸¦ Á¦°ÅÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyCommandPool();
-		// ÀÀ¿ë Ã¢¿¡ ¹úÄ­À» ÅëÇÕÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½Ä­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createWindow();
-		// Ã¢À» Á¦°ÅÇÕ´Ï´Ù.
+		// Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyWindow();
-		// ÀÎ½ºÅÏ½º¿¡ ´ëÇÏ¿© È°¼ºÈ­ÇÒ È®Àå ÀÌ¸§µéÀ» °¡Á®¿É´Ï´Ù.
+		// ï¿½Î½ï¿½ï¿½Ï½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¿ï¿½ È°ï¿½ï¿½È­ï¿½ï¿½ È®ï¿½ï¿½ ï¿½Ì¸ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½É´Ï´ï¿½.
 		static std::vector<std::string> getNeededInstanceExtensions();
-		// ½º¿Ò Ã¼ÀÎÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createSwapchain();
-		// ½º¿Ò Ã¼ÀÎÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroySwapchain();
-		// ¹°¸® ÀåÄ¡ÀÇ ¿øÇÏ´Â È®Àå Áö¿ø ¿©ºÎ¸¦ È®ÀÎÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½Ï´ï¿½ È®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¸ï¿½ È®ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool checkDeviceExtension(VkPhysicalDevice);
-		// ½º¿Ò Ã¼ÀÎ¿¡¼­ ÀÌ¹ÌÁö ºä¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½Î¿ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ä¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createSwapchainImageViews();
-		// ½º¿Ò Ã¼ÀÎÀÇ ÀÌ¹ÌÁö ºä¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ä¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroySwapchainImageViews();
-		// ·»´õÆÐ½º¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ð½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createRenderPasses();
-		// ·»´õÆÐ½º¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ð½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyRenderPasses();
-		// ´Ü¼ø ·»´õ¸µÀ» À§ÇÑ ÆÐ½º¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ð½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createRenderPass0();
-		// ´Ü¼ø ·»´õ¸µÀ» À§ÇÑ ÆÐ½º¸¦ Á¦°ÅÇÕ´Ï´Ù.
+		// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ð½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyRenderPass0();
-		// ÇÊ¿äÇÑ ÇÁ·¹ÀÓ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createFramebuffers();
-		// ÇÁ·¹ÀÓ¹öÆÛ¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyFramebuffers();
-		// ÃÖÁ¾ ´Ü°è(½º¿Ò Ã¼ÀÎ¿¡ ¿¬°áµÈ)ÀÇ ÇÁ·¹ÀÓ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½Ü°ï¿½(ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createEndFramebuffers();
-		// ÃÖÁ¾ ´Ü°è(½º¿Ò Ã¼ÀÎ¿¡ ¿¬°áµÈ)ÀÇ ÇÁ·¹ÀÓ¹öÆÛ¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½Ü°ï¿½(ï¿½ï¿½ï¿½ï¿½ Ã¼ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyEndFramebuffers();
-		// ÇÊ¿äÇÑ ÆÄÀÌÇÁ¶óÀÎÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createPipelines();
-		// ÆÄÀÌÇÁ¶óÀÎÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyPipelines();
-		// ´Ü¼ø ÆÄÀÌÇÁ¶óÀÎÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createPipeline0();
-		// ´Ü¼ø ÆÄÀÌÇÁ¶óÀÎÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½Ü¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyPipeline0();
-		// SPIR-V ÄÚµå¸¦ ¹Þ¾Æ ¼ÎÀÌ´õ ¸ðµâÀ» »ý¼ºÇÕ´Ï´Ù.
+		// SPIR-V ï¿½Úµå¸¦ ï¿½Þ¾ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static VkShaderModule createShaderModuleFromSpv(const std::vector<uint32_t>& bcode);
-		// SPIR-V ÄÚµå¸¦ ÆÄÀÏ¿¡¼­ ÀÐ¾î ¼ÎÀÌ´õ ¸ðµâÀ» »ý¼ºÇÕ´Ï´Ù.
+		// SPIR-V ï¿½Úµå¸¦ ï¿½ï¿½ï¿½Ï¿ï¿½ï¿½ï¿½ ï¿½Ð¾ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static VkShaderModule createShaderModule(const char* fileName);
-		// GLSL ÄÚµå¸¦ ÆÄÀÏ¿¡¼­ ÀÐ¾î ¼ÎÀÌ´õ ¸ðµâÀ» »ý¼ºÇÕ´Ï´Ù.
+		// GLSL ï¿½Úµå¸¦ ï¿½ï¿½ï¿½Ï¿ï¿½ï¿½ï¿½ ï¿½Ð¾ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static VkShaderModule createShaderModule(const char* fileName, shaderc_shader_kind kind);
-		// ¸Þ¸ð¸® »óÀÇ º¯¼ö·ÎºÎÅÍ GLSL ÄÚµå¸¦ ÀÐ¾î ¸ðµâÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Þ¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½ GLSL ï¿½Úµå¸¦ ï¿½Ð¾ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static VkShaderModule createShaderModule(const char* code, size_t size, shaderc_shader_kind kind, const char* name);
-		// »ï°¢Çü 2°³¸¦ ±×¸®±â À§ÇÑ Á¤Á¡ ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù. ´ç¿¬ÇÏÁö¸¸ ÀÌÈÄ Áö¿ì°í, Mesh °°Àº ÀÌ¸§ÀÇ Å¬·¡½º·Î ÀÏ¹ÝÈ­ÇÏ°ÚÁÒ.
+		// ï¿½ï°¢ï¿½ï¿½ 2ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½. ï¿½ç¿¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½, Mesh ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï¹ï¿½È­ï¿½Ï°ï¿½ï¿½ï¿½.
 		static bool createFixedVertexBuffer();
-		// »ï°¢Çü 2°³¸¦ ±×¸®±â À§ÇÑ Á¤Á¡ ¹öÆÛ¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï°¢ï¿½ï¿½ 2ï¿½ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyFixedVertexBuffer();
-		// °íÁ¤ Á¤Á¡À» °¡Áö°í ÇÑ ¹ø ±×·Á º¾´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½×·ï¿½ ï¿½ï¿½ï¿½Ï´ï¿½.
 		static void fixedDraw();
-		// ÇÊ¿äÇÑ ¼¼¸¶Æ÷¾î¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createSemaphore();
-		// ¸¸µç ¼¼¸¶Æ÷¾î¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroySemaphore();
-		// °øÀ¯ ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createUniformBuffer();
-		// °øÀ¯ ¹öÆÛ¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyUniformBuffer();
-		// µð½ºÅ©¸³ÅÍ ÁýÇÕÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½Å©ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createDescriptorSet();
-		// µð½ºÅ©¸³ÅÍ ÁýÇÕÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½Å©ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyDescriptorSet();
-		// Á÷»ç°¢Çü ÇÏ³ª¸¦ ±×¸®±â À§ÇÑ °íÁ¤ ÀÎµ¦½º ¹öÆÛ¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ç°¢ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createFixedIndexBuffer();
-		// Á÷»ç°¢Çü ÇÏ³ª¸¦ ±×¸®±â À§ÇÑ °íÁ¤ ÀÎµ¦½º ¹öÆÛ¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ç°¢ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyFixedIndexBuffer();
-		// ±íÀÌ/½ºÅÙ½Ç ¹öÆÛ¸¦ À§ÇÑ ÀÌ¹ÌÁö¿Í ÀÌ¹ÌÁö ºä¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ä¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createDSBuffer();
-		// ±íÀÌ/½ºÅÙ½Ç ¹öÆÛ¸¦ À§ÇÑ ÀÌ¹ÌÁö¿Í ÀÌ¹ÌÁö ºä¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ä¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyDSBuffer();
-		// °íÁ¤µÈ ÅØ½ºÃ³ ÀÌ¹ÌÁö¸¦ ÇÏ³ª ¸¸µé¾î º¾´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ø½ï¿½Ã³ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï³ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï´ï¿½.
 		static bool createTex0();
-		// °íÁ¤µÈ ÅØ½ºÃ³ ÀÌ¹ÌÁö¸¦ ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ø½ï¿½Ã³ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyTex0();
-		// tex0 »ùÇÃ·¯¸¦ »ý¼ºÇÕ´Ï´Ù.
+		// tex0 ï¿½ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createSampler0();
-		// tex0 »ùÇÃ·¯¸¦ Á¦°ÅÇÕ´Ï´Ù.
+		// tex0 ï¿½ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroySampler0();
-		// È®Àå Áö¿ø ¿©ºÎ¸¦ È®ÀÎÇÕ´Ï´Ù.
+		// È®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¸ï¿½ È®ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		inline static bool hasExt(OptionalEXT ext) { return extSupported[(size_t)ext]; }
-		// ÈÄÃ³¸® ÆÄÀÌÇÁ¶óÀÎÀ» »ý¼ºÇÕ´Ï´Ù.
+		// ï¿½ï¿½Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static bool createPipeline1();
-		// ÈÄÃ³¸® ÆÄÀÌÇÁ¶óÀÎÀ» ÇØÁ¦ÇÕ´Ï´Ù.
+		// ï¿½ï¿½Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyPipeline1();
-		// glfw ÇÁ·¹ÀÓ¹öÆÛ ¸®»çÀÌÁî ÄÝ¹éÀÔ´Ï´Ù.
+		// glfw ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½ï¿½Ô´Ï´ï¿½.
 		static void onResize(GLFWwindow* window, int width, int height);
-		// VMA ÇÒ´ç±â¸¦ ÃÊ±âÈ­ÇÕ´Ï´Ù.
+		// VMA ï¿½Ò´ï¿½â¸¦ ï¿½Ê±ï¿½È­ï¿½Õ´Ï´ï¿½.
 		static bool initAllocator();
-		// VMA ÇÒ´ç±â »ç¿ëÀ» Á¾·áÇÕ´Ï´Ù.
+		// VMA ï¿½Ò´ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
 		static void destroyAllocator();
-	private:	// »ó¼ö
+	private:	// ï¿½ï¿½ï¿½
 		constexpr static bool USE_VALIDATION_LAYER = true;
 		constexpr static const char* VALIDATION_LAYERS[] = { "VK_LAYER_KHRONOS_validation" };
 		constexpr static int VALIDATION_LAYER_COUNT = sizeof(VALIDATION_LAYERS) / sizeof(const char*);

@@ -190,7 +190,7 @@ namespace onart {
 
 	bool VkPlayer::createInstance() {
 		VkApplicationInfo ainfo{};
-		ainfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;	// °íÁ¤°ª
+		ainfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		ainfo.apiVersion = VK_API_VERSION_1_0;	//VK_HEADER_VERSION_COMPLETE;
 
 		ainfo.pApplicationName = "OAVKE";
@@ -198,8 +198,8 @@ namespace onart {
 		ainfo.pEngineName = "OAVKE";
 		ainfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
 
-		VkInstanceCreateInfo info{};	// ÀÏ´Ü ¸ğµÎ 0À¸·Î ÃÊ±âÈ­ÇÔ
-		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// °íÁ¤°ª
+		VkInstanceCreateInfo info{};	// ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½ï¿½
+		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		info.pApplicationInfo = &ainfo;
 
 		std::vector<std::string> names = getNeededInstanceExtensions();
@@ -404,8 +404,8 @@ namespace onart {
 		VkSwapchainCreateInfoKHR info{};
 		info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		info.surface = surface;
-
-		info.minImageCount = caps.minImageCount > caps.maxImageCount - 1 ? caps.minImageCount + 1 : caps.maxImageCount;
+		
+		info.minImageCount = std::min(caps.minImageCount - 1, caps.maxImageCount - 1) + 1;
 		info.imageFormat = swapchainImageFormat = sf.format;
 		info.imageColorSpace = sf.colorSpace;
 		info.imageExtent.width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
@@ -423,7 +423,7 @@ namespace onart {
 		else {
 			info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			info.queueFamilyIndexCount = 2;
-			info.pQueueFamilyIndices = &physicalDevice.graphicsFamily; // ³ªÁß¿¡ ´õ Á÷°üÀûÀ¸·Î º¯°æ
+			info.pQueueFamilyIndices = &physicalDevice.graphicsFamily; // ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		}
 		if (vkCreateSwapchainKHR(device, &info, nullptr, &swapchain) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create swapchain\n");
@@ -527,7 +527,7 @@ namespace onart {
 		middleColorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		middleColorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-		VkAttachmentReference colorAttachmentRef{};	// ¼­ºêÆĞ½º°¡ º¼ ¹øÈ£¿Í ·¹ÀÌ¾Æ¿ô Á¤ÀÇ
+		VkAttachmentReference colorAttachmentRef{};	// ï¿½ï¿½ï¿½ï¿½ï¿½Ğ½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½È£ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾Æ¿ï¿½ ï¿½ï¿½ï¿½ï¿½
 		colorAttachmentRef.attachment = 2;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -562,8 +562,8 @@ namespace onart {
 		VkSubpassDependency& dependency0 = dependencies[0];
 		VkSubpassDependency& dependency1 = dependencies[1];
 		dependency0.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency0.dstSubpass = 1;	// 1¹ø ¼­ºêÆĞ½º°¡ ¿ÜºÎ¿¡ ´ëÇÑ ÀÇÁ¸¼ºÀÌ Á¸Àç
-		dependency0.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // ´ë±âÇÒ srcSubpass¿¡¼­ÀÇ ÀÛ¾÷ À¯Çü
+		dependency0.dstSubpass = 1;	// 1ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ğ½ï¿½ï¿½ï¿½ ï¿½ÜºÎ¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		dependency0.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // ï¿½ï¿½ï¿½ï¿½ï¿½ srcSubpassï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Û¾ï¿½ ï¿½ï¿½ï¿½ï¿½
 		dependency0.srcAccessMask = 0;
 		dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // 
 		dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -640,12 +640,12 @@ namespace onart {
 		destroyPipeline0();
 	}
 
-	struct Vertex {	// ÀÓ½Ã
+	struct Vertex {	// ï¿½Ó½ï¿½
 		float pos[3];
 		float tc[2];
 	};
 
-	template <class T, unsigned D>	// ÀÓ½Ã
+	template <class T, unsigned D>	// ï¿½Ó½ï¿½
 	struct UBentry {
 		alignas(sizeof(T)* (D <= 2 ? 2 : 4)) T entry[D];
 		T& operator[](size_t p) { return entry[p]; }
@@ -667,7 +667,7 @@ namespace onart {
 	using UBmat4 = UBentry<float, 16>;
 
 	bool VkPlayer::createPipeline0() {
-		// programmable function: ¼¼ÀÌ´õ Á¾·ù´Â ¼ö½Ê °¡ÁöÂë µÅ º¸ÀÌ¹Ç·Î, ¿À¹ö·Îµå·Î ¼ö¿ëÇÒ °Í
+		// programmable function: ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¹Ç·ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½Îµï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		VkShaderModule vertModule = createShaderModule("tri.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
 		VkShaderModule fragModule = createShaderModule("tri.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
 		VkPipelineShaderStageCreateInfo shaderStagesInfo[2] = {};
@@ -681,7 +681,7 @@ namespace onart {
 		shaderStagesInfo[1].module = fragModule;
 		shaderStagesInfo[1].pName = "main";
 
-		// fixed function: Á¤Á¡ ÀÔ·Â µ¥ÀÌÅÍ Çü½Ä. ¿ì¼± °ø¶õ
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ ï¿½Ô·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½ì¼± ï¿½ï¿½ï¿½ï¿½
 		VkVertexInputBindingDescription vbind{};
 		vbind.binding = 0;
 		vbind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -705,14 +705,14 @@ namespace onart {
 		vertexInputInfo.vertexAttributeDescriptionCount = 2;
 		vertexInputInfo.pVertexAttributeDescriptions = vattrs;
 
-		// fixed function: Á¤Á¡ ¸ğÀ¸±â
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3°³¾¿ ²÷¾î »ï°¢Çü
-		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff È¤Àº 0xffffffff ÀÎµ¦½º·Î ½ºÆ®¸³ ²÷±â °¡´É ¿©ºÎ
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï°¢ï¿½ï¿½
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff È¤ï¿½ï¿½ 0xffffffff ï¿½Îµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-		// fixed function: ºäÆ÷Æ®, ½ÃÀú (ºäÆ÷Æ®: cvv»ó ±×¸²ÀÌ ±×·ÁÁú ÃÖÁ¾ Á÷»ç°¢Çü, ½ÃÀú: ½º¿ÒÃ¼ÀÎ ÀÌ¹ÌÁö¿¡¼­ ±×·ÁÁö´Â °ÍÀ» Çã¿ëÇÒ ºÎºĞ)
-		// ** ºäÆ÷Æ®´Â ·±Å¸ÀÓ¿¡ Á¶Á¤ °¡´É ** 
+		// fixed function: ï¿½ï¿½ï¿½ï¿½Æ®, ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½Æ®: cvvï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ç°¢ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½: ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îºï¿½)
+		// ** ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½Ó¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ** 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -732,22 +732,22 @@ namespace onart {
 		viewportStateInfo.scissorCount = 1;
 		viewportStateInfo.pScissors = &scissor;
 
-		// fixed function: ·¡½ºÅÍ¶óÀÌÀú
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½ï¿½ï¿½ï¿½ï¿½
 		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
 		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizerInfo.depthClampEnable = VK_FALSE;	// Ç¥ÁØ ºä º¼·ıÀÇ zÁÂÇ¥°¡ ÃÊ°úÇÏ¸é Àß¶ó³»Áö ¾Ê°í z°ª ÀÚÃ¼¸¦ ÁÙÀÌ¸é¼­ »ì¸²
-		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUEÀÎ °æ¿ì Ãâ·ÂÀÌ ¾ÈµÊ
-		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// ¿ÍÀÌ¾îÇÁ·¹ÀÓ µî ÁöÁ¤ °¡´É. ¾Æ¸¶ °Çµå¸± ÀÏ ¾øÀ» °Í
-		rasterizerInfo.lineWidth = 1.0f;					// ¼± ³Êºñ: °Çµå¸± ÀÏ ¾øÀ½
-		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// ¸é °Å¸§: °Çµå¸± ÀÏ ÀÖÀ½
-		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// ÀÌ°Ç °Çµå¸± ÀÏ ¾øÀ» µí
-		rasterizerInfo.depthBiasEnable = VK_FALSE;			// ¿©±âºÎÅÍ 4°³´Â ±íÀÌ °ªÀ» Á÷Á¢ °Çµå¸®´Â ºÎºĞ. »ç¿ëÇÒ ÀÏ ¾øÀ» µí
+		rasterizerInfo.depthClampEnable = VK_FALSE;	// Ç¥ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ zï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½Ê°ï¿½ï¿½Ï¸ï¿½ ï¿½ß¶ï¿½ï¿½ï¿½ ï¿½Ê°ï¿½ zï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¸é¼­ ï¿½ì¸²
+		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUEï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// ï¿½ï¿½ï¿½Ì¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½Æ¸ï¿½ ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+		rasterizerInfo.lineWidth = 1.0f;					// ï¿½ï¿½ ï¿½Êºï¿½: ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// ï¿½ï¿½ ï¿½Å¸ï¿½: ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// ï¿½Ì°ï¿½ ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+		rasterizerInfo.depthBiasEnable = VK_FALSE;			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 4ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Çµå¸®ï¿½ï¿½ ï¿½Îºï¿½. ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		rasterizerInfo.depthBiasConstantFactor = 0.0f;
 		rasterizerInfo.depthBiasClamp = 0.0f;
 		rasterizerInfo.depthBiasSlopeFactor = 0.0f;
 
-		// fixed function: ¸ÖÆ¼»ùÇÃ¸µ (ÇöÀç´Â °ø¶õÀ¸·Î)
-		// ¾ÈÆ¼¿¡ÀÏ¸®¾î½Ì¿¡ »ç¿ëÇÏ´Â °æ¿ì¿¡ ´ëÇÏ¿© ¸Å°³º¯¼ö ¼ö¿ëÇÒ ÇÊ¿ä°¡ ÀÖÀ»µí
+		// fixed function: ï¿½ï¿½Æ¼ï¿½ï¿½ï¿½Ã¸ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
+		// ï¿½ï¿½Æ¼ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½Ì¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ì¿¡ ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½Å°ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ä°¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		VkPipelineMultisampleStateCreateInfo msInfo{};
 		msInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		msInfo.sampleShadingEnable = VK_FALSE;
@@ -771,8 +771,8 @@ namespace onart {
 		depthStencilInfo.front.passOp = VkStencilOp::VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 		depthStencilInfo.front.reference = 0x00;
 
-		// fixed function: »ö ºí·»µù
-		// ºí·»µùÀº ´ëÃ¼·Î SRC_ALPHA, 1-SRC_ALPHA·Î ÇÏ´Ï ¹İÅõ¸íÀÌ ¾øÀ» °Å¶ó¸é ¼º´ÉÀ» À§ÇØ ²ô´Â Á¤µµ?
+		// fixed function: ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ SRC_ALPHA, 1-SRC_ALPHAï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½?
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
 		colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachmentState.blendEnable = VK_TRUE;
@@ -805,7 +805,7 @@ namespace onart {
 		pushRange.size = 20;
 		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		// fixed function: ÆÄÀÌÇÁ¶óÀÎ ·¹ÀÌ¾Æ¿ô: uniform ¹× push º¯¼ö¿¡ °üÇÑ °Í
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾Æ¿ï¿½: uniform ï¿½ï¿½ push ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		VkDescriptorSetLayout setlayouts[2] = { ubds,ubds };
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -815,7 +815,7 @@ namespace onart {
 		pipelineLayoutInfo.pPushConstantRanges = &pushRange;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout0);
 
-		// ÆÄÀÌÇÁ¶óÀÎ »ı¼º
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineInfo.stageCount = sizeof(shaderStagesInfo) / sizeof(shaderStagesInfo[0]);
@@ -831,7 +831,7 @@ namespace onart {
 		pipelineInfo.layout = pipelineLayout0;
 		pipelineInfo.renderPass = renderPass0;
 		pipelineInfo.subpass = 0;
-		// ¾Æ·¡ 2°³: ±âÁ¸ ÆÄÀÌÇÁ¶óÀÎÀ» ±â¹İÀ¸·Î ºñ½ÁÇÏ°Ô »ı¼ºÇÏ±â À§ÇÔ
+		// ï¿½Æ·ï¿½ 2ï¿½ï¿½: ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.basePipelineIndex = -1;
 
@@ -855,13 +855,23 @@ namespace onart {
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions opts;
 		opts.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
-		opts.SetInvertY(true);	// ¹úÄ­Àº ¾Æ·¡ÂÊÀÌ y=1ÀÓ -> opengl°ú ÅëÀÏÀ» À§ÇØ. * zÃàÀº 0~1 ¹üÀ§.. ÀÎµ¥ glsl¿¡´Â ÀÌ ¿É¼ÇÀÌ ÀÇ¹Ì°¡ ¾ø´Ù´Â ¸»ÀÌ ÀÖÀ½
+		opts.SetInvertY(true);	// ï¿½ï¿½Ä­ï¿½ï¿½ ï¿½Æ·ï¿½ï¿½ï¿½ï¿½ï¿½ y=1ï¿½ï¿½ -> openglï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. * zï¿½ï¿½ï¿½ï¿½ 0~1 ï¿½ï¿½ï¿½ï¿½.. ï¿½Îµï¿½ glslï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½É¼ï¿½ï¿½ï¿½ ï¿½Ç¹Ì°ï¿½ ï¿½ï¿½ï¿½Ù´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(code, size, kind, name, opts);
 		if (result.GetCompilationStatus() != shaderc_compilation_status::shaderc_compilation_status_success) {
 			fprintf(stderr, "compiler : %s\n", result.GetErrorMessage().c_str());
 		}
 		return { result.cbegin(),result.cend() };
 	}
+#ifndef MSC_VER
+	int fopen_s(FILE** fpp, const char* fileName, const char* mode){
+		*fpp = fopen(fileName, mode);
+		return *fpp != NULL;
+	}
+
+	size_t fread_s(void *buffer, size_t bufferSize, size_t elementSize, size_t count, FILE *stream){
+		return fread(buffer, elementSize, bufferSize >= elementSize * count ? count : bufferSize / elementSize, stream);
+	}
+#endif
 
 	static std::vector<uint32_t> compileShader(const char* fileName, shaderc_shader_kind kind) {
 		FILE* fp;
@@ -884,6 +894,7 @@ namespace onart {
 	static std::vector<uint32_t> loadShader(const char* fileName) {
 		FILE* fp;
 		fopen_s(&fp, fileName, "rb");
+		
 		if (!fp) {
 			perror("fopen_s");
 			return {};
@@ -925,10 +936,10 @@ namespace onart {
 
 	bool VkPlayer::createFixedVertexBuffer() {
 		Vertex ar[]{
-			{{-0.5,0.5,0.99},{0,1}}, // ÁÂÇÏ
-			{{0.5,0.5,0.99},{1,1}},  // ¿ìÇÏ
-			{{0.5,-0.5,0.99},{1,0}}, // ¿ì»ó
-			{{-0.5,-0.5,0.99},{0,0}}, // ÁÂ»ó
+			{{-0.5,0.5,0.99},{0,1}}, // ï¿½ï¿½ï¿½ï¿½
+			{{0.5,0.5,0.99},{1,1}},  // ï¿½ï¿½ï¿½ï¿½
+			{{0.5,-0.5,0.99},{1,0}}, // ï¿½ï¿½ï¿½
+			{{-0.5,-0.5,0.99},{0,0}}, // ï¿½Â»ï¿½
 
 			{{-1,1,0.9},{0,1}},
 			{{1,1,0.9},{1,1}},
@@ -1009,7 +1020,7 @@ namespace onart {
 			return false;
 		}
 		VkBufferCopy copyRegion{};
-		copyRegion.size = sizeof(ar); // ¿ÀÇÁ¼Â ¼³Á¤ °¡´É
+		copyRegion.size = sizeof(ar); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		vkCmdCopyBuffer(copyBuffer, vb, VkPlayer::vb, 1, &copyRegion);
 		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to end command buffer for copying vertex buffer\n");
@@ -1252,7 +1263,7 @@ namespace onart {
 			vkDestroyBuffer(device, ub[i], nullptr);
 		}
 	}
-
+ // TODO: ë‹¤ì´ë‚˜ë¯¹ ë””ìŠ¤í¬ë¦½í„°ì…‹ ì˜¤í”„ì…‹ 256ê³ ì • ë§ê³  ì§„ì§œê°’ìœ¼ë¡œ ì ìš©
 	bool VkPlayer::createDescriptorSet() {
 		VkDescriptorSetLayoutBinding dsBindings[2] = {};
 		VkDescriptorSetLayoutBinding& uboBinding = dsBindings[0];
@@ -1285,19 +1296,17 @@ namespace onart {
 		VkDescriptorPoolSize& smsize = sizes[1];
 
 		ubsize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		ubsize.descriptorCount = COMMANDBUFFER_COUNT;
+		ubsize.descriptorCount = 5;
 
 		smsize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		smsize.descriptorCount = 2;
+		smsize.descriptorCount = 10; // reserved number of descriptor for this type in this pool: we're using 4 sets of DYNAMIC UB for each command buffers and 1 set of sampler, so if we want to use command buffers like this, it'll be better to use another pool for this one
+		// because we allocate each types simultaneously, not respectively
 
 		VkDescriptorPoolCreateInfo dpinfo{};
 		dpinfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		dpinfo.poolSizeCount = sizeof(sizes) / sizeof(sizes[0]);
 		dpinfo.pPoolSizes = sizes;
-		dpinfo.maxSets = 0;
-		for (int i = 0; i < dpinfo.poolSizeCount; i++) {
-			dpinfo.maxSets += dpinfo.pPoolSizes[i].descriptorCount;
-		}
+		dpinfo.maxSets = COMMANDBUFFER_COUNT * 2;
 
 		if (vkCreateDescriptorPool(device, &dpinfo, nullptr, &ubpool) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create descriptor pool\n");
@@ -1315,7 +1324,7 @@ namespace onart {
 			fprintf(stderr, "Failed to allocate descriptor set\n");
 			return false;
 		}
-		VkDeviceSize dynamicAlignment = 256;
+		VkDeviceSize dynamicAlignment = minUniformBufferOffset;
 		for (size_t i = 0; i < COMMANDBUFFER_COUNT; i++) {
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = ub[i];
@@ -1492,7 +1501,7 @@ namespace onart {
 			return false;
 		}
 		VkBufferCopy copyRegion{};
-		copyRegion.size = sizeof(ar); // ¿ÀÇÁ¼Â ¼³Á¤ °¡´É
+		copyRegion.size = sizeof(ar); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		vkCmdCopyBuffer(copyBuffer, ib, VkPlayer::ib, 1, &copyRegion);
 		if (vkEndCommandBuffer(copyBuffer) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to end command buffer for copying index buffer\n");
@@ -1583,7 +1592,7 @@ namespace onart {
 		}
 		dsImageFormat = imgInfo.format;
 
-		// »õ »ö Ã·ºÎ¹°
+		// ï¿½ï¿½ ï¿½ï¿½ Ã·ï¿½Î¹ï¿½
 		imgInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 		imgInfo.format = swapchainImageFormat;
 		if (vkCreateImage(device, &imgInfo, nullptr, &middleImage) != VK_SUCCESS) {
@@ -1800,7 +1809,7 @@ namespace onart {
 			return false;
 		}
 
-		// 2¹øÂ°
+		// 2ï¿½ï¿½Â°
 		pix = readImageFile("no2.png", &w, &h, &ch);
 		if (!pix) {
 			fprintf(stderr, "Failed to read image file\n");
@@ -1980,7 +1989,7 @@ namespace onart {
 	}
 
 	bool VkPlayer::createPipeline1() {
-		// programmable function: ¼¼ÀÌ´õ Á¾·ù´Â ¼ö½Ê °¡ÁöÂë µÅ º¸ÀÌ¹Ç·Î, ¿À¹ö·Îµå·Î ¼ö¿ëÇÒ °Í
+		// programmable function: ï¿½ï¿½ï¿½Ì´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¹Ç·ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½Îµï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		VkShaderModule vertModule = createShaderModule("post.vert", shaderc_shader_kind::shaderc_glsl_vertex_shader);
 		VkShaderModule fragModule = createShaderModule("post.frag", shaderc_shader_kind::shaderc_glsl_fragment_shader);
 		VkPipelineShaderStageCreateInfo shaderStagesInfo[2] = {};
@@ -1999,11 +2008,11 @@ namespace onart {
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3°³¾¿ ²÷¾î »ï°¢Çü
-		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff È¤Àº 0xffffffff ÀÎµ¦½º·Î ½ºÆ®¸³ ²÷±â °¡´É ¿©ºÎ
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;	// 3ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï°¢ï¿½ï¿½
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;	// 0xffff È¤ï¿½ï¿½ 0xffffffff ï¿½Îµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-		// fixed function: ºäÆ÷Æ®, ½ÃÀú (ºäÆ÷Æ®: cvv»ó ±×¸²ÀÌ ±×·ÁÁú ÃÖÁ¾ Á÷»ç°¢Çü, ½ÃÀú: ½º¿ÒÃ¼ÀÎ ÀÌ¹ÌÁö¿¡¼­ ±×·ÁÁö´Â °ÍÀ» Çã¿ëÇÒ ºÎºĞ)
-		// ** ºäÆ÷Æ®´Â ·±Å¸ÀÓ¿¡ Á¶Á¤ °¡´É ** 
+		// fixed function: ï¿½ï¿½ï¿½ï¿½Æ®, ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½Æ®: cvvï¿½ï¿½ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ç°¢ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½: ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Îºï¿½)
+		// ** ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½Å¸ï¿½Ó¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ** 
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -2023,22 +2032,22 @@ namespace onart {
 		viewportStateInfo.scissorCount = 1;
 		viewportStateInfo.pScissors = &scissor;
 
-		// fixed function: ·¡½ºÅÍ¶óÀÌÀú
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½ï¿½ï¿½ï¿½ï¿½
 		VkPipelineRasterizationStateCreateInfo rasterizerInfo{};
 		rasterizerInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizerInfo.depthClampEnable = VK_FALSE;	// Ç¥ÁØ ºä º¼·ıÀÇ zÁÂÇ¥°¡ ÃÊ°úÇÏ¸é Àß¶ó³»Áö ¾Ê°í z°ª ÀÚÃ¼¸¦ ÁÙÀÌ¸é¼­ »ì¸²
-		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUEÀÎ °æ¿ì Ãâ·ÂÀÌ ¾ÈµÊ
-		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// ¿ÍÀÌ¾îÇÁ·¹ÀÓ µî ÁöÁ¤ °¡´É. ¾Æ¸¶ °Çµå¸± ÀÏ ¾øÀ» °Í
-		rasterizerInfo.lineWidth = 1.0f;					// ¼± ³Êºñ: °Çµå¸± ÀÏ ¾øÀ½
-		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// ¸é °Å¸§: °Çµå¸± ÀÏ ÀÖÀ½
-		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// ÀÌ°Ç °Çµå¸± ÀÏ ¾øÀ» µí
-		rasterizerInfo.depthBiasEnable = VK_FALSE;			// ¿©±âºÎÅÍ 4°³´Â ±íÀÌ °ªÀ» Á÷Á¢ °Çµå¸®´Â ºÎºĞ. »ç¿ëÇÒ ÀÏ ¾øÀ» µí
+		rasterizerInfo.depthClampEnable = VK_FALSE;	// Ç¥ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ zï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½Ê°ï¿½ï¿½Ï¸ï¿½ ï¿½ß¶ï¿½ï¿½ï¿½ ï¿½Ê°ï¿½ zï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¸é¼­ ï¿½ì¸²
+		rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;	// TRUEï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½
+		rasterizerInfo.polygonMode = VK_POLYGON_MODE_FILL;	// ï¿½ï¿½ï¿½Ì¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½Æ¸ï¿½ ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+		rasterizerInfo.lineWidth = 1.0f;					// ï¿½ï¿½ ï¿½Êºï¿½: ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		rasterizerInfo.cullMode = VK_CULL_MODE_BACK_BIT;	// ï¿½ï¿½ ï¿½Å¸ï¿½: ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+		rasterizerInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// ï¿½Ì°ï¿½ ï¿½Çµå¸± ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
+		rasterizerInfo.depthBiasEnable = VK_FALSE;			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 4ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Çµå¸®ï¿½ï¿½ ï¿½Îºï¿½. ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		rasterizerInfo.depthBiasConstantFactor = 0.0f;
 		rasterizerInfo.depthBiasClamp = 0.0f;
 		rasterizerInfo.depthBiasSlopeFactor = 0.0f;
 
-		// fixed function: ¸ÖÆ¼»ùÇÃ¸µ (ÇöÀç´Â °ø¶õÀ¸·Î)
-		// ¾ÈÆ¼¿¡ÀÏ¸®¾î½Ì¿¡ »ç¿ëÇÏ´Â °æ¿ì¿¡ ´ëÇÏ¿© ¸Å°³º¯¼ö ¼ö¿ëÇÒ ÇÊ¿ä°¡ ÀÖÀ»µí
+		// fixed function: ï¿½ï¿½Æ¼ï¿½ï¿½ï¿½Ã¸ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
+		// ï¿½ï¿½Æ¼ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½Ì¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ì¿¡ ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½Å°ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ä°¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		VkPipelineMultisampleStateCreateInfo msInfo{};
 		msInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		msInfo.sampleShadingEnable = VK_FALSE;
@@ -2051,8 +2060,8 @@ namespace onart {
 		VkPipelineDepthStencilStateCreateInfo depthStencilInfo{};
 		depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 
-		// fixed function: »ö ºí·»µù
-		// ºí·»µùÀº ´ëÃ¼·Î SRC_ALPHA, 1-SRC_ALPHA·Î ÇÏ´Ï ¹İÅõ¸íÀÌ ¾øÀ» °Å¶ó¸é ¼º´ÉÀ» À§ÇØ ²ô´Â Á¤µµ?
+		// fixed function: ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ SRC_ALPHA, 1-SRC_ALPHAï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Å¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½?
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState{};
 		colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachmentState.blendEnable = VK_TRUE;
@@ -2085,14 +2094,14 @@ namespace onart {
 		pushRange.size = 16;
 		pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		// fixed function: ÆÄÀÌÇÁ¶óÀÎ ·¹ÀÌ¾Æ¿ô: uniform ¹× push º¯¼ö¿¡ °üÇÑ °Í
+		// fixed function: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾Æ¿ï¿½: uniform ï¿½ï¿½ push ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &sp1layout;
 		vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout1);
 
-		// ÆÄÀÌÇÁ¶óÀÎ »ı¼º
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineInfo.stageCount = sizeof(shaderStagesInfo) / sizeof(shaderStagesInfo[0]);
@@ -2108,7 +2117,7 @@ namespace onart {
 		pipelineInfo.layout = pipelineLayout1;
 		pipelineInfo.renderPass = renderPass0;
 		pipelineInfo.subpass = 1;
-		// ¾Æ·¡ 2°³: ±âÁ¸ ÆÄÀÌÇÁ¶óÀÎÀ» ±â¹İÀ¸·Î ºñ½ÁÇÏ°Ô »ı¼ºÇÏ±â À§ÇÔ
+		// ï¿½Æ·ï¿½ 2ï¿½ï¿½: ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.basePipelineIndex = -1;
 
