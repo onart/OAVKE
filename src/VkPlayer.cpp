@@ -17,10 +17,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  IMPL
 #include <algorithm>
 #include <cstring>
 
+#define KHRONOS_STATIC
+#include "externals/ktx/ktx.h"
+
 #ifdef _MSC_VER
 #pragma comment(lib, "externals/vulkan/vulkan-1.lib")
 #pragma comment(lib, "externals/glfw/glfw3_mt.lib")
 #pragma comment(lib, "externals/shaderc/shaderc_shared.lib")
+#pragma comment(lib, "externals/ktx/ktx.lib")
 #endif
 
 namespace onart {
@@ -38,7 +42,7 @@ namespace onart {
 	VkExtent2D VkPlayer::swapchainExtent;
 	VkSurfaceKHR VkPlayer::surface = nullptr;
 	VkSwapchainKHR VkPlayer::swapchain = nullptr;
-	std::vector<VkImageView> VkPlayer::swapchainImageViews;
+	::std::vector<VkImageView> VkPlayer::swapchainImageViews;
 	VkFormat VkPlayer::swapchainImageFormat;
 	VkRenderPass VkPlayer::renderPass0 = nullptr;
 	std::vector<VkFramebuffer> VkPlayer::endFramebuffers;
@@ -160,8 +164,8 @@ namespace onart {
 			tp = (float)glfwGetTime();
 			dt = tp - prev;
 			idt = 1.0f / dt;
-			//if ((frame & 15) == 0) printf("%f\r",idt);
-			if ((frame & 1023) == 0) printf("%f\r", frame / glfwGetTime());
+			if ((frame & 15) == 0) printf("%f\r",idt);
+			//if ((frame & 1023) == 0) printf("%f\r", frame / glfwGetTime());
 			prev = tp;
 			// loop body
 			fixedDraw();
@@ -201,7 +205,14 @@ namespace onart {
 		VkInstanceCreateInfo info{};	// �ϴ� ��� 0���� �ʱ�ȭ��
 		info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;	// ������
 		info.pApplicationInfo = &ainfo;
-
+		uint32_t count;
+		vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
+		std::vector<VkExtensionProperties> ep(count);
+		vkEnumerateInstanceExtensionProperties(nullptr, &count, ep.data());
+		/*for (auto& x : ep) {
+			printf("%s\n",x.extensionName);
+		}
+		printf("\n");*/
 		std::vector<std::string> names = getNeededInstanceExtensions();
 		std::vector<const char*> pnames(names.size());
 		for (size_t i = 0; i < pnames.size(); i++) { pnames[i] = names[i].c_str(); }
@@ -286,7 +297,13 @@ namespace onart {
 
 		VkPhysicalDeviceFeatures features{};
 		features.samplerAnisotropy = hasExt(OptionalEXT::ANISOTROPIC);
-
+		uint32_t count;
+		vkEnumerateDeviceExtensionProperties(physicalDevice.card, nullptr, &count, nullptr);
+		std::vector<VkExtensionProperties> ep(count);
+		vkEnumerateDeviceExtensionProperties(physicalDevice.card, nullptr, &count, ep.data());
+		/*for (auto& x : ep) {
+			printf("%s\n",x.extensionName);
+		}*/
 		VkDeviceCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		info.pQueueCreateInfos = qInfo;
@@ -410,7 +427,7 @@ namespace onart {
 		info.imageColorSpace = sf.colorSpace;
 		info.imageExtent.width = std::clamp(width, caps.minImageExtent.width, caps.maxImageExtent.width);
 		info.imageExtent.height = std::clamp(height, caps.minImageExtent.height, caps.maxImageExtent.height);
-		info.presentMode = std::find(modes.begin(), modes.end(), VK_PRESENT_MODE_MAILBOX_KHR) != modes.end() ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+		info.presentMode = VK_PRESENT_MODE_FIFO_KHR;// std::find(modes.begin(), modes.end(), VK_PRESENT_MODE_MAILBOX_KHR) != modes.end() ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
 		info.imageArrayLayers = 1;
 		info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		info.preTransform = caps.currentTransform;
@@ -862,6 +879,7 @@ namespace onart {
 		}
 		return { result.cbegin(),result.cend() };
 	}
+#define MSC_VER
 #ifndef MSC_VER
 	int fopen_s(FILE** fpp, const char* fileName, const char* mode){
 		*fpp = fopen(fileName, mode);
@@ -1640,11 +1658,107 @@ namespace onart {
 		return pix;
 	}
 
+	bool isThisFormatAvailable(VkPhysicalDevice physicalDevice, VkFormat format, uint32_t x, uint32_t y, VkImageCreateFlagBits flags = (VkImageCreateFlagBits)0) {
+		VkImageFormatProperties props;
+		VkResult result = vkGetPhysicalDeviceImageFormatProperties(
+			physicalDevice,
+			format,
+			VK_IMAGE_TYPE_2D,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			flags, // 경우에 따라 VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT
+			&props
+		);
+		return (result != VK_ERROR_FORMAT_NOT_SUPPORTED) &&
+			(props.maxExtent.width >= x) &&
+			(props.maxExtent.height >= y);
+	}
+
+	VkFormat fallback(VkPhysicalDevice physicalDevice, int x, int y) {
+#define CHECK_N_RETURN(f) if(isThisFormatAvailable(physicalDevice,f,x,y)) return f
+		CHECK_N_RETURN(VK_FORMAT_ASTC_4x4_SRGB_BLOCK);
+		CHECK_N_RETURN(VK_FORMAT_BC7_SRGB_BLOCK);
+		CHECK_N_RETURN(VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK);
+		CHECK_N_RETURN(VK_FORMAT_BC3_SRGB_BLOCK);
+		return VK_FORMAT_R8G8B8A8_SRGB;
+#undef CHECK_N_RETURN    
+	}
+
 	bool VkPlayer::createTex0() {
 		int w, h, ch;
 		unsigned char* pix = readImageFile("no1.png", &w, &h, &ch);
 		if (!pix) {
 			fprintf(stderr, "Failed to read image file\n");
+			return false;
+		}
+		
+		ktxTexture2* texture;
+		ktxTextureCreateInfo k2info{};
+		k2info.vkFormat = VK_FORMAT_R8G8B8A8_UNORM;
+		k2info.baseWidth = w;
+		k2info.baseHeight = h;
+		k2info.baseDepth = 1;
+		k2info.numDimensions = 2;
+		k2info.numFaces = 1;
+		k2info.numLayers = 1;
+		k2info.numLevels = 1;
+		k2info.isArray = KTX_FALSE;
+		k2info.generateMipmaps = KTX_FALSE;
+		ktx_error_code_e k2result = ktxTexture2_Create(&k2info, KTX_TEXTURE_CREATE_ALLOC_STORAGE, &texture);
+		if (k2result != KTX_SUCCESS) {
+			fprintf(stderr, "Failed to initialize ktx2 object: %d\n",k2result);
+			free(pix);
+			return false;
+		}
+		
+		k2result = ktxTexture_SetImageFromMemory(ktxTexture(texture), 0, 0, 0, pix, w * h * ch);
+		if (k2result != KTX_SUCCESS) {
+			fprintf(stderr, "Failed to set ktx2 data: %d\n",k2result);
+			free(pix);
+			return false;
+		}
+
+		ktxBasisParams params{};
+		//params.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL;
+		params.uastc = KTX_TRUE;
+		params.structSize = sizeof(params);
+		k2result = ktxTexture2_CompressBasisEx(texture, &params);
+		if (k2result != KTX_SUCCESS) {
+			printf("basis compress failed: %d\n",k2result);
+			free(pix);
+			return false;
+		}
+
+		ktx_transcode_fmt_e tf;
+
+		VkFormat availableFormat;
+		switch (availableFormat = fallback(physicalDevice.card, w, h))
+		{
+		case VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
+			printf("ASTC\n");
+			tf = KTX_TTF_ASTC_4x4_RGBA;
+			break;
+		case VK_FORMAT_BC7_SRGB_BLOCK:
+			printf("BC7\n");
+			tf = KTX_TTF_BC7_RGBA;
+			break;
+		case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+			printf("ETC2\n");
+			tf = KTX_TTF_ETC2_RGBA;
+			break;
+		case VK_FORMAT_BC3_SRGB_BLOCK:
+			printf("BC3\n");
+			tf = KTX_TTF_BC3_RGBA;
+			break;
+		default:
+			printf("RGBA\n");
+			tf = KTX_TTF_RGBA32;
+			break;
+		}
+		k2result = ktxTexture2_TranscodeBasis(texture, tf, 0);
+		if (k2result != KTX_SUCCESS) {
+			printf("basis transcode failed: %d\n", k2result);
+			free(pix);
 			return false;
 		}
 
@@ -1656,7 +1770,7 @@ namespace onart {
 		imgInfo.extent.depth = 1;
 		imgInfo.mipLevels = 1;
 		imgInfo.arrayLayers = 1;
-		imgInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+		imgInfo.format = availableFormat;
 		imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1690,7 +1804,7 @@ namespace onart {
 		VkBufferCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		info.size = static_cast<VkDeviceSize>(w) * h * 4;
+		info.size = texture->dataSize;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VkBuffer temp;
@@ -1717,8 +1831,9 @@ namespace onart {
 			free(pix);
 			return false;
 		}
-		memcpy(data, pix, info.size);
+		memcpy(data, texture->pData, info.size);
 		free(pix);
+		ktxTexture_Destroy(ktxTexture(texture));
 		vkUnmapMemory(device, tempMem);
 		if (vkBindBufferMemory(device, temp, tempMem, 0) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to bind buffer object and memory\n");
@@ -1796,12 +1911,13 @@ namespace onart {
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewInfo.image = tex0;
 		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+		viewInfo.format = availableFormat;
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		viewInfo.subresourceRange.baseArrayLayer = 0;
 		viewInfo.subresourceRange.baseMipLevel = 0;
 		viewInfo.subresourceRange.layerCount = 1;
 		viewInfo.subresourceRange.levelCount = 1;
+		
 		viewInfo.components = { VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY ,VK_COMPONENT_SWIZZLE_IDENTITY };
 
 		if (vkCreateImageView(device, &viewInfo, nullptr, &texview0) != VK_SUCCESS) {
@@ -1941,6 +2057,7 @@ namespace onart {
 		vkFreeMemory(device, tempMem, nullptr);
 
 		viewInfo.image = tex1;
+		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 
 		if (vkCreateImageView(device, &viewInfo, nullptr, &texview1) != VK_SUCCESS) {
 			fprintf(stderr, "Failed to create image view for texture\n");
@@ -1962,7 +2079,7 @@ namespace onart {
 	bool VkPlayer::createSampler0() {
 		VkSamplerCreateInfo samplerInfo{};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER; 
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 		samplerInfo.magFilter = VK_FILTER_LINEAR;
